@@ -270,6 +270,35 @@ PRD.md
 
 ---
 
+## 发布流程
+
+仓库提供 GitHub Actions Release 流程：
+
+```text
+.github/workflows/release.yml
+```
+
+发布前需要先确认 `metadata.yaml` 中的 `version` 与 Release 版本一致。
+
+推荐发布方式：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+推送 `v*` tag 后，GitHub Actions 会自动：
+
+1. 安装打包依赖。
+2. 校验 `metadata.yaml` 版本与 tag 一致。
+3. 运行打包脚本生成插件 zip。
+4. 上传构建产物。
+5. 创建 GitHub Release 并附加插件 zip。
+
+也可以在 GitHub Actions 页面手动运行 `Release` workflow，并填写版本号。
+
+---
+
 ## 许可证
 
 本仓库使用 GNU General Public License v3.0，详见 `LICENSE`。
