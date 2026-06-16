@@ -431,7 +431,13 @@ match_timeout_ms: 50
 quote_reply: false
 cooldown_seconds: 0
 enable_global_question: false
-enable_image_message: false
+enable_image_message: true
+persist_image_as_base64: true
+max_images_per_answer: 5
+enable_processing_feedback: true
+processing_emoji_ids:
+  - "424"
+  - "66"
 enable_data_export: false
 enable_data_import: false
 storage_backend: json
@@ -460,7 +466,11 @@ permission_denied_notice: true
 | `quote_reply` | `bool` | `false` | 自动回复时是否引用触发消息。 |
 | `cooldown_seconds` | `int` | `0` | 同群或同规则触发冷却时间。0 表示不启用冷却。 |
 | `enable_global_question` | `bool` | `false` | 是否启用 `全群问A你答B`、`全群不要回答A` 等跨群维护命令。 |
-| `enable_image_message` | `bool` | `false` | 是否支持图片作为问题或回答。首版建议关闭，待确认 AstrBot 各平台消息链兼容后再启用。 |
+| `enable_image_message` | `bool` | `true` | 是否支持图片回答以及文本 + 图片复合回答。 |
+| `persist_image_as_base64` | `bool` | `true` | 是否尽量将图片转为 base64 持久化保存，降低临时图片 URL 过期风险。 |
+| `max_images_per_answer` | `int` | `5` | 单条回答最多允许保存的图片数量。 |
+| `enable_processing_feedback` | `bool` | `true` | 图片保存耗时较长时是否发送处理反馈。优先使用 QQ 表情回应，失败时发送文本提示。 |
+| `processing_emoji_ids` | `list[string]` | `["424", "66"]` | OneBot/NapCat `set_msg_emoji_like` 使用的表情 ID 候选列表。 |
 | `enable_data_export` | `bool` | `false` | 是否启用数据导出命令。属于维护功能，默认关闭。 |
 | `enable_data_import` | `bool` | `false` | 是否启用数据导入或重建命令。属于高危维护功能，默认关闭。 |
 | `storage_backend` | `string` | `json` | 数据存储后端。首版建议支持 `json`，后续可扩展为 `sqlite`。 |
@@ -571,7 +581,7 @@ permission_denied_notice: true
 
 ### 13.2 可延后实现
 
-- 图片作为问题或回答。
+- 图片作为问题。
 - `全群问A你答B`。
 - `看看全群问A`。
 - `全群不要回答A`。

@@ -22,6 +22,30 @@
     "type": "bool",
     "default": true
   },
+  "enable_image_message": {
+    "description": "启用图片回答",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后可保存和回复“你答”后的图片以及文本+图片复合回答。"
+  },
+  "persist_image_as_base64": {
+    "description": "将图片持久化为 base64",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后会尽量把图片转为 base64 保存，降低平台临时图片 URL 过期风险。"
+  },
+  "enable_processing_feedback": {
+    "description": "启用图片保存处理反馈",
+    "type": "bool",
+    "default": true,
+    "hint": "保存图片回答可能较慢。开启后会优先给原消息添加 QQ 表情回应，失败时发送“正在保存图片回答”。"
+  },
+  "processing_emoji_ids": {
+    "description": "处理反馈 QQ 表情 ID 列表",
+    "type": "list",
+    "default": ["424", "66"],
+    "hint": "用于 OneBot/NapCat 的 set_msg_emoji_like。不同客户端支持的 ID 可能不同。"
+  },
   "reject_empty_regex": {
     "description": "拒绝空匹配/泛匹配问题",
     "type": "bool",
@@ -49,6 +73,12 @@
     "type": "int",
     "default": 20,
     "slider": { "min": 1, "max": 100, "step": 1 }
+  },
+  "max_images_per_answer": {
+    "description": "单条回答图片数量上限",
+    "type": "int",
+    "default": 5,
+    "slider": { "min": 1, "max": 20, "step": 1 }
   },
   "max_questions_per_user_per_group": {
     "description": "单用户单群个人问答上限",

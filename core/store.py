@@ -11,6 +11,7 @@ from typing import cast
 
 from astrbot.api import logger
 
+from .message_codec import AnswerChain
 from .models import MatchResult, QuestionEntry
 from .text import replace_backrefs
 
@@ -91,7 +92,11 @@ class XQAStore:
         return len(self._scope_dict(group_id, user_id))
 
     async def set_question(
-        self, group_id: str, user_id: str | None, question: str, answers: list[str]
+        self,
+        group_id: str,
+        user_id: str | None,
+        question: str,
+        answers: list[AnswerChain],
     ) -> None:
         scope = self._scope_dict(group_id, user_id)
         scope[question] = QuestionEntry(answers=answers, updated_at=time()).to_raw()
@@ -156,6 +161,18 @@ class XQAStore:
             except re.error:
                 continue
             if match:
-                answer = replace_backrefs(random.choice(entry.answers), match)
+                answer = _replace_chain_backrefs(random.choice(entry.answers), match)
                 return MatchResult(question=question, answer=answer, scope=scope_name)
         return None
+
+
+def _replace_chain_backrefs(chain: AnswerChain, match: re.Match[str]) -> AnswerChain:
+    result: AnswerChain = []
+    for seg in chain:
+        if seg.get("type") == "text":
+            result.append(
+                {"type": "text", "text": replace_backrefs(seg.get("text", ""), match)}
+            )
+        else:
+            result.append(dict(seg))
+    return result

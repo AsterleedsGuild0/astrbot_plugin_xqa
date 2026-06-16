@@ -1,17 +1,28 @@
 from __future__ import annotations
 
+import inspect
+
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
+from astrbot.api.event import MessageChain
 from astrbot.api.star import Context, Star, StarTools
 
+from .core.message_codec import (
+    AnswerChain,
+    build_components,
+    chain_image_count,
+    chain_text_length,
+    has_answer_content,
+    has_image_after_answer_delimiter,
+    parse_set_command_from_event,
+    split_text_only_answer,
+)
 from .core.store import XQAStore
 from .core.text import (
     DELETE_PATTERN,
-    QUESTION_PATTERN,
     SHOW_PATTERN,
     is_empty_or_broad_regex,
     looks_dangerous_regex,
-    split_answers,
 )
 
 
@@ -52,17 +63,20 @@ class XQAPlugin(Star):
             event.stop_event()
             if reply == "":
                 return
-            yield event.plain_result(reply)
+            if isinstance(reply, str):
+                yield event.plain_result(reply)
+            else:
+                yield event.chain_result(build_components(reply))
             return
 
         reply = await self._match_reply(group_id, user_id, message)
         if reply is not None:
             event.stop_event()
-            yield event.plain_result(reply)
+            yield event.chain_result(build_components(reply))
 
     async def _handle_management_message(
         self, event: AstrMessageEvent, group_id: str, user_id: str, message: str
-    ) -> str | None:
+    ) -> str | AnswerChain | None:
         if message in {"XQA禁用我问", "XQA启用我问"}:
             return await self._toggle_self_question(
                 event, group_id, message.endswith("启用我问")
@@ -70,11 +84,21 @@ class XQAPlugin(Star):
         if message == "XQA清空本群所有我问" or message == "XQA清空本群所有有人问":
             return "暂未实现清空命令。请先使用“不要回答A”逐条删除。"
 
-        set_match = QUESTION_PATTERN.match(message)
-        if set_match:
-            question_type, question, answer = set_match.groups()
+        if self.config.get(
+            "enable_processing_feedback", True
+        ) and has_image_after_answer_delimiter(event):
+            await self._send_slow_image_save_ack(event)
+
+        set_command = await parse_set_command_from_event(
+            event,
+            persist_image_as_base64=bool(
+                self.config.get("persist_image_as_base64", True)
+            ),
+        )
+        if set_command:
+            question_type, question, answer_chain = set_command
             return await self._set_question(
-                event, group_id, user_id, (question_type, question, answer)
+                event, group_id, user_id, (question_type, question, answer_chain)
             )
 
         show_match = SHOW_PATTERN.match(message)
@@ -98,22 +122,32 @@ class XQAPlugin(Star):
         event: AstrMessageEvent,
         group_id: str,
         user_id: str,
-        groups: tuple[str, str, str],
+        groups: tuple[str, str, AnswerChain],
     ) -> str:
-        question_type, question, raw_answer = groups
+        question_type, question, answer_chain = groups
         question = question.strip()
-        raw_answer = raw_answer.strip()
 
-        if not question or not raw_answer:
+        if not question or not has_answer_content(answer_chain):
             return f"发送“{question_type}问XXX你答XXX”我才记得住~"
 
         if len(question) > int(self.config.get("max_question_length", 200)):
             return "问题太长了，无法保存。"
-        if len(raw_answer) > int(self.config.get("max_answer_length", 1000)):
+        if chain_text_length(answer_chain) > int(
+            self.config.get("max_answer_length", 1000)
+        ):
             return "回答太长了，无法保存。"
 
+        if chain_image_count(answer_chain) > 0 and not self.config.get(
+            "enable_image_message", True
+        ):
+            return "当前配置未启用图片回答。"
+
+        max_images = int(self.config.get("max_images_per_answer", 5))
+        if chain_image_count(answer_chain) > max_images:
+            return f"单条回答最多支持 {max_images} 张图片。"
+
         max_answers = int(self.config.get("max_answers_per_question", 20))
-        answers = split_answers(raw_answer, max_answers)
+        answers = split_text_only_answer(answer_chain, max_answers)
         if not answers:
             return "回答内容不能为空。"
 
@@ -229,7 +263,7 @@ class XQAPlugin(Star):
 
     async def _match_reply(
         self, group_id: str, user_id: str, message: str
-    ) -> str | None:
+    ) -> AnswerChain | None:
         if self._is_in_cooldown(group_id):
             return None
         enable_regex = bool(self.config.get("enable_regex_question", True))
@@ -274,6 +308,152 @@ class XQAPlugin(Star):
         if self.config.get("permission_denied_notice", True):
             return f"权限不足：{text}"
         return ""
+
+    async def _send_slow_image_save_ack(self, event: AstrMessageEvent) -> None:
+        if await self._try_send_qq_emoji_feedback(event, action="save-image-answer"):
+            return
+        try:
+            await event.send(MessageChain().message("正在保存图片回答，请稍候…"))
+            logger.debug(
+                f"[XQA] processing acknowledgement sent {self._event_context(event)}"
+            )
+        except Exception as exc:
+            logger.debug(
+                "[XQA] processing acknowledgement failed "
+                f"{self._event_context(event)} error={type(exc).__name__}: {exc}"
+            )
+
+    async def _try_send_qq_emoji_feedback(
+        self, event: AstrMessageEvent, *, action: str
+    ) -> bool:
+        platform = str(event.get_platform_name() or "").lower()
+        platform_id = str(event.get_platform_id() or "").lower()
+        if not any(
+            key in f"{platform} {platform_id}" for key in ("qq", "cq", "onebot")
+        ):
+            return False
+
+        message_id = self._event_message_id(event)
+        if not message_id:
+            return False
+        bot = self._event_bot(event)
+        if bot is None:
+            return False
+
+        async def maybe_await(value: object) -> None:
+            if inspect.isawaitable(value):
+                await value
+
+        emoji_ids = tuple(
+            str(x) for x in (self.config.get("processing_emoji_ids", []) or [])
+        ) or (
+            "424",
+            "66",
+        )
+        for emoji_id in emoji_ids:
+            try:
+                method = getattr(bot, "set_msg_emoji_like", None)
+                if callable(method):
+                    await maybe_await(
+                        method(
+                            message_id=int(message_id),
+                            emoji_id=emoji_id,
+                            emoji_type="1",
+                            set=True,
+                        )
+                    )
+                    logger.debug(
+                        "[XQA] QQ emoji feedback sent "
+                        f"action={action} emoji_id={emoji_id} {self._event_context(event)}"
+                    )
+                    return True
+
+                call_action = getattr(bot, "call_action", None)
+                if callable(call_action):
+                    await maybe_await(
+                        call_action(
+                            "set_msg_emoji_like",
+                            message_id=int(message_id),
+                            emoji_id=emoji_id,
+                            emoji_type="1",
+                            set=True,
+                        )
+                    )
+                    logger.debug(
+                        "[XQA] QQ emoji feedback sent via call_action "
+                        f"action={action} emoji_id={emoji_id} {self._event_context(event)}"
+                    )
+                    return True
+
+                call_api = getattr(bot, "call_api", None)
+                if callable(call_api):
+                    await maybe_await(
+                        call_api(
+                            "set_msg_emoji_like",
+                            message_id=int(message_id),
+                            emoji_id=emoji_id,
+                            set=True,
+                        )
+                    )
+                    logger.debug(
+                        "[XQA] QQ emoji feedback sent via call_api "
+                        f"action={action} emoji_id={emoji_id} {self._event_context(event)}"
+                    )
+                    return True
+            except TypeError:
+                try:
+                    method = getattr(bot, "set_msg_emoji_like", None)
+                    if callable(method):
+                        await maybe_await(method(int(message_id), emoji_id, True))
+                        logger.debug(
+                            "[XQA] QQ emoji feedback sent positional "
+                            f"action={action} emoji_id={emoji_id} {self._event_context(event)}"
+                        )
+                        return True
+                except Exception as exc:
+                    logger.debug(
+                        "[XQA] QQ emoji feedback positional failed "
+                        f"action={action} emoji_id={emoji_id} "
+                        f"error={type(exc).__name__}: {exc}"
+                    )
+            except Exception as exc:
+                logger.debug(
+                    "[XQA] QQ emoji feedback failed "
+                    f"action={action} emoji_id={emoji_id} error={type(exc).__name__}: {exc}"
+                )
+        return False
+
+    @staticmethod
+    def _event_message_id(event: AstrMessageEvent) -> str:
+        msg_obj = getattr(event, "message_obj", None)
+        return str(getattr(msg_obj, "message_id", "") or "").strip()
+
+    @staticmethod
+    def _event_bot(event: AstrMessageEvent) -> object | None:
+        for obj in (event, getattr(event, "message_obj", None)):
+            if obj is None:
+                continue
+            for attr in ("bot", "client"):
+                value = getattr(obj, attr, None)
+                if value is not None:
+                    return value
+            getter = getattr(obj, "get_bot", None)
+            if callable(getter):
+                try:
+                    value = getter()
+                except Exception:
+                    value = None
+                if value is not None:
+                    return value
+        return None
+
+    @staticmethod
+    def _event_context(event: AstrMessageEvent) -> str:
+        return (
+            f"platform={event.get_platform_id() or '-'} "
+            f"group={event.get_group_id() or '-'} "
+            f"sender={event.get_sender_id() or '-'}"
+        )
 
     def _help_text(self) -> str:
         return """XQA 问答帮助
