@@ -26,6 +26,7 @@ PACKAGE_ROOT_FILES = [
     "requirements.txt",
     "README.md",
     "LICENSE",
+    "logo.png",
     "yuiChyan.jpg",
 ]
 

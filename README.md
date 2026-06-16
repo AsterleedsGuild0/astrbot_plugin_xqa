@@ -284,7 +284,7 @@ PRD.md
 
 - `azmiao/YuiChyanBot`：<https://github.com/azmiao/YuiChyanBot>
 - XQA 模块及其 `我问A你答B`、`有人问A你答B` 交互设计
-- 插件 logo 使用 `yuiChyan.jpg`
+- 插件 logo 使用来自参考项目的 `yuiChyan.jpg`，并以 AstrBot 常用的 `logo.png` 文件名随插件发布。
 
 感谢原项目作者和贡献者的工作。
 
