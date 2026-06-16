@@ -1,0 +1,1 @@
+"""AstrBot XQA plugin package."""
