@@ -315,6 +315,6 @@ git push origin v0.1.0
 - XQA 模块及其 `我问A你答B`、`有人问A你答B` 交互设计
 - 插件 logo 使用来自参考项目的 `yuiChyan.jpg`，并以 AstrBot 常用的 `logo.png` 文件名随插件发布。
 
-感谢原项目作者和贡献者的工作。
+感谢原项目作者 [AZMIAO](https://github.com/azmiao) 的工作。
 
 如果后续实现中直接移植或改写参考项目代码，将在 README 与源码注释中继续补充对应来源和许可说明。
