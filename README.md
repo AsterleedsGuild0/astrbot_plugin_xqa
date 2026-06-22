@@ -227,6 +227,7 @@ Bot 回复：
 | --- | --- | --- |
 | `self_question_enabled_default` | `true` | 新群默认是否启用个人问答 |
 | `admin_users` | `[]` | 插件管理员用户 ID 列表 |
+| `allow_group_admin_manage_public_questions` | `true` | 是否允许 QQ 群主/群管理员管理公共问答 |
 | `enable_regex_question` | `true` | 是否启用正则问题 |
 | `enable_image_message` | `true` | 是否启用图片回答 |
 | `persist_image_as_base64` | `true` | 是否尽量将图片持久化为 base64 |

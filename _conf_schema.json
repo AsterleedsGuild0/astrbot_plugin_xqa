@@ -17,6 +17,12 @@
     "default": false,
     "hint": "当前实现使用 AstrBot 管理员/插件管理员判断。"
   },
+  "allow_group_admin_manage_public_questions": {
+    "description": "允许群管理员管理公共问答",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 QQ 群主/群管理员可使用“有人问A你答B”并删除本群公共问答。"
+  },
   "enable_regex_question": {
     "description": "启用正则问题",
     "type": "bool",

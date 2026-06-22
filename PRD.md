@@ -419,6 +419,7 @@ XQA帮助
 self_question_enabled_default: true
 allow_group_admin_toggle_self_question: false
 allow_group_admin_clear_questions: false
+allow_group_admin_manage_public_questions: true
 enable_regex_question: true
 max_question_length: 200
 max_answer_length: 1000
@@ -454,6 +455,7 @@ permission_denied_notice: true
 | `self_question_enabled_default` | `bool` | `true` | 新群默认是否启用个人问答。关闭后，普通成员不能使用 `我问A你答B`，自动回复也不会匹配个人问答。 |
 | `allow_group_admin_toggle_self_question` | `bool` | `false` | 是否允许群管理员使用 `XQA启用我问` / `XQA禁用我问`。关闭时仅 Bot 超级管理员可操作。 |
 | `allow_group_admin_clear_questions` | `bool` | `false` | 是否允许群管理员清空本群问答。默认关闭，避免误删大量数据。 |
+| `allow_group_admin_manage_public_questions` | `bool` | `true` | 是否允许 QQ 群主/群管理员设置和删除本群公共问答。 |
 | `enable_regex_question` | `bool` | `true` | 是否允许问题文本作为正则表达式参与匹配。关闭后仅支持完全匹配。 |
 | `max_question_length` | `int` | `200` | 单个问题最大字符数。用于限制超长问题和异常正则。 |
 | `max_answer_length` | `int` | `1000` | 单条原始回答最大字符数，按用户输入的完整回答计算。 |

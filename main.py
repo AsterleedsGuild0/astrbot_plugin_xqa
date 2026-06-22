@@ -172,8 +172,8 @@ class XQAPlugin(Star):
             return "好的我记住了。"
 
         if question_type == "有人":
-            if not await self._is_plugin_admin(event):
-                return self._permission_denied("有人问只能管理员设置。")
+            if not await self._can_manage_public_questions(event):
+                return self._permission_denied("有人问只能群管理员设置。")
             limit = int(self.config.get("max_public_questions_per_group", 300))
             if self.store.count_questions(group_id, None) >= limit:
                 return f"本群公共问答数量已达到上限（{limit}）。"
@@ -244,6 +244,9 @@ class XQAPlugin(Star):
         if await self._is_plugin_admin(event):
             deleted_public = await self.store.delete_question(group_id, None, question)
             return "已删除公共问答。" if deleted_public else "没有找到该问题。"
+        if await self._is_group_admin(event):
+            deleted_public = await self.store.delete_question(group_id, None, question)
+            return "已删除公共问答。" if deleted_public else "没有找到该问题。"
         if question in self.store.list_questions(group_id, None):
             return self._permission_denied("你没有权限删除公共问答。")
         return "没有找到该问题。"
@@ -303,6 +306,40 @@ class XQAPlugin(Star):
         return sender_id in {
             str(item).strip() for item in raw_admins if str(item).strip()
         }
+
+    async def _can_manage_public_questions(self, event: AstrMessageEvent) -> bool:
+        if await self._is_plugin_admin(event):
+            return True
+        if not self.config.get("allow_group_admin_manage_public_questions", True):
+            return False
+        return await self._is_group_admin(event)
+
+    async def _is_group_admin(self, event: AstrMessageEvent) -> bool:
+        get_group = getattr(event, "get_group", None)
+        if not callable(get_group):
+            return False
+        try:
+            group_value = get_group()
+            group = (
+                await group_value if inspect.isawaitable(group_value) else group_value
+            )
+        except Exception as exc:
+            logger.debug(
+                "[XQA] get_group failed while checking group admin "
+                f"{self._event_context(event)} error={type(exc).__name__}: {exc}"
+            )
+            return False
+
+        sender_id = str(event.get_sender_id() or "").strip()
+        if not sender_id:
+            return False
+        owner_id = str(getattr(group, "group_owner", "") or "").strip()
+        admin_ids = {
+            str(item).strip()
+            for item in (getattr(group, "group_admins", None) or [])
+            if str(item).strip()
+        }
+        return sender_id == owner_id or sender_id in admin_ids
 
     def _permission_denied(self, text: str) -> str:
         if self.config.get("permission_denied_notice", True):
