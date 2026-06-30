@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 import re
+import asyncio
+import hashlib
+import shutil
+from pathlib import Path
 from typing import Any, TypeAlias
+from urllib.parse import urlparse
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
-from astrbot.api.message_components import Image, Plain
+from astrbot.api.message_components import File, Image, Plain, Reply, Video
 
 from .text import split_answers
 
 AnswerSegment: TypeAlias = dict[str, str]
 AnswerChain: TypeAlias = list[AnswerSegment]
+
+VIDEO_FILE_SUFFIXES = {".mp4", ".mov", ".m4v", ".webm"}
 
 
 def normalize_answer_chain(raw: object) -> AnswerChain:
@@ -38,6 +45,8 @@ def chain_to_plain_text(chain: AnswerChain) -> str:
             parts.append(seg.get("text", ""))
         elif seg.get("type") == "image":
             parts.append("[图片]")
+        elif seg.get("type") == "video":
+            parts.append("[视频]")
     return "".join(parts)
 
 
@@ -49,9 +58,15 @@ def chain_image_count(chain: AnswerChain) -> int:
     return sum(1 for seg in chain if seg.get("type") == "image")
 
 
+def chain_video_count(chain: AnswerChain) -> int:
+    return sum(1 for seg in chain if seg.get("type") == "video")
+
+
 def has_answer_content(chain: AnswerChain) -> bool:
     for seg in chain:
         if seg.get("type") == "image":
+            return True
+        if seg.get("type") == "video":
             return True
         if seg.get("type") == "text" and seg.get("text", "").strip():
             return True
@@ -68,7 +83,12 @@ def split_text_only_answer(chain: AnswerChain, limit: int) -> list[AnswerChain]:
 
 
 async def parse_set_command_from_event(
-    event: AstrMessageEvent, *, persist_image_as_base64: bool = True
+    event: AstrMessageEvent,
+    *,
+    persist_image_as_base64: bool = True,
+    video_dir: str | Path | None = None,
+    max_video_size_mb: int = 50,
+    video_download_timeout_seconds: int = 30,
 ) -> tuple[str, str, AnswerChain] | None:
     before_text, answer_chain = await _split_set_command_components(
         event, persist_image_as_base64=persist_image_as_base64
@@ -78,10 +98,21 @@ async def parse_set_command_from_event(
     matched = re.match(r"^(全群|有人|我)问([\s\S]*)$", before_text)
     if not matched:
         return None
+    if not has_answer_content(answer_chain):
+        video_chain = await _extract_replied_video_answer(
+            event,
+            video_dir=video_dir,
+            max_video_size_mb=max_video_size_mb,
+            timeout_seconds=video_download_timeout_seconds,
+        )
+        if video_chain:
+            answer_chain = video_chain
     return matched.group(1), matched.group(2), answer_chain
 
 
-def build_components(chain: AnswerChain) -> list[Any]:
+def build_components(
+    chain: AnswerChain, *, data_dir: str | Path | None = None
+) -> list[Any]:
     components: list[Any] = []
     for seg in chain:
         if seg.get("type") == "text":
@@ -98,9 +129,24 @@ def build_components(chain: AnswerChain) -> list[Any]:
             elif source == "url":
                 components.append(Image.fromURL(value))
             elif source == "file":
-                components.append(Image.fromFileSystem(value))
+                components.append(
+                    Image.fromFileSystem(_resolve_file_value(value, data_dir))
+                )
             else:
                 components.append(Image(file=value))
+        elif seg.get("type") == "video":
+            source = seg.get("source", "")
+            value = seg.get("value", "")
+            if not value:
+                continue
+            if source == "url":
+                components.append(Video.fromURL(value))
+            elif source == "file":
+                components.append(
+                    Video.fromFileSystem(_resolve_file_value(value, data_dir))
+                )
+            else:
+                components.append(Video(file=value))
     return components
 
 
@@ -113,6 +159,17 @@ def has_image_after_answer_delimiter(event: AstrMessageEvent) -> bool:
                 found_delimiter = True
         elif isinstance(comp, Image) and found_delimiter:
             return True
+    return False
+
+
+def has_replied_video_answer(event: AstrMessageEvent) -> bool:
+    for comp in event.get_messages():
+        if isinstance(comp, Reply):
+            return any(
+                isinstance(item, Video)
+                or (isinstance(item, File) and _is_video_file_component(item))
+                for item in (comp.chain or [])
+            )
     return False
 
 
@@ -200,4 +257,162 @@ def _normalize_segment(raw: dict[Any, Any]) -> AnswerSegment | None:
             "source": str(raw.get("source", "raw")),
             "value": value,
         }
+    if seg_type == "video":
+        value = str(raw.get("value", ""))
+        if not value:
+            return None
+        return {
+            "type": "video",
+            "source": str(raw.get("source", "file")),
+            "value": value,
+        }
     return None
+
+
+async def _extract_replied_video_answer(
+    event: AstrMessageEvent,
+    *,
+    video_dir: str | Path | None,
+    max_video_size_mb: int,
+    timeout_seconds: int,
+) -> AnswerChain:
+    if video_dir is None:
+        return []
+    for comp in event.get_messages():
+        if not isinstance(comp, Reply):
+            continue
+        for item in comp.chain or []:
+            if isinstance(item, Video):
+                segment = await _persist_video(
+                    item,
+                    video_dir=Path(video_dir),
+                    max_video_size_mb=max_video_size_mb,
+                    timeout_seconds=timeout_seconds,
+                )
+                return [segment] if segment else []
+            if isinstance(item, File) and _is_video_file_component(item):
+                segment = await _persist_video_file(
+                    item,
+                    video_dir=Path(video_dir),
+                    max_video_size_mb=max_video_size_mb,
+                    timeout_seconds=timeout_seconds,
+                )
+                return [segment] if segment else []
+    return []
+
+
+async def _persist_video(
+    video: Video,
+    *,
+    video_dir: Path,
+    max_video_size_mb: int,
+    timeout_seconds: int,
+) -> AnswerSegment | None:
+    video_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        source_path = await asyncio.wait_for(
+            video.convert_to_file_path(), timeout=max(1, timeout_seconds)
+        )
+    except TimeoutError as exc:
+        raise ValueError("视频下载/转换超时，请稍后重试。") from exc
+    except Exception as exc:
+        raise ValueError(f"视频保存失败：{type(exc).__name__}") from exc
+
+    return _persist_video_path(
+        Path(source_path),
+        video_dir=video_dir,
+        max_video_size_mb=max_video_size_mb,
+    )
+
+
+async def _persist_video_file(
+    file: File,
+    *,
+    video_dir: Path,
+    max_video_size_mb: int,
+    timeout_seconds: int,
+) -> AnswerSegment | None:
+    try:
+        source_path = await asyncio.wait_for(
+            file.get_file(), timeout=max(1, timeout_seconds)
+        )
+    except TimeoutError as exc:
+        raise ValueError("视频文件下载超时，请稍后重试。") from exc
+    except Exception as exc:
+        raise ValueError(f"视频文件保存失败：{type(exc).__name__}") from exc
+
+    source = Path(source_path) if source_path else Path()
+    suffix_hint = _video_file_suffix(file)
+    return _persist_video_path(
+        source,
+        video_dir=video_dir,
+        max_video_size_mb=max_video_size_mb,
+        suffix_hint=suffix_hint,
+    )
+
+
+def _persist_video_path(
+    source: Path,
+    *,
+    video_dir: Path,
+    max_video_size_mb: int,
+    suffix_hint: str = "",
+) -> AnswerSegment | None:
+    video_dir.mkdir(parents=True, exist_ok=True)
+    if not source.is_file():
+        raise ValueError("视频保存失败：未找到视频文件。")
+
+    max_bytes = max_video_size_mb * 1024 * 1024
+    file_size = source.stat().st_size
+    if max_bytes > 0 and file_size > max_bytes:
+        raise ValueError(f"视频过大，当前上限为 {max_video_size_mb} MB。")
+
+    digest = _file_sha256(source)
+    suffix = source.suffix or suffix_hint or ".mp4"
+    target = video_dir / f"{digest}{suffix}"
+    if not target.exists():
+        shutil.copy2(source, target)
+        logger.info(f"[XQA] 视频回答已保存 path={target} size={file_size}")
+    return {
+        "type": "video",
+        "source": "file",
+        "value": str(Path("videos") / target.name),
+    }
+
+
+def _is_video_file_component(file: File) -> bool:
+    return _video_file_suffix(file) in VIDEO_FILE_SUFFIXES
+
+
+def _video_file_suffix(file: File) -> str:
+    for value in (
+        getattr(file, "name", ""),
+        getattr(file, "file_", ""),
+        getattr(file, "url", ""),
+    ):
+        suffix = _suffix_from_value(str(value or ""))
+        if suffix:
+            return suffix
+    return ""
+
+
+def _suffix_from_value(value: str) -> str:
+    if not value:
+        return ""
+    parsed_path = urlparse(value).path if "://" in value else value
+    return Path(parsed_path).suffix.lower()
+
+
+def _file_sha256(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def _resolve_file_value(value: str, data_dir: str | Path | None) -> str:
+    path = Path(value)
+    if path.is_absolute() or data_dir is None:
+        return str(path)
+    return str(Path(data_dir) / path)

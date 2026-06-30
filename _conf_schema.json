@@ -34,6 +34,12 @@
     "default": true,
     "hint": "开启后可保存和回复“你答”后的图片以及文本+图片复合回答。"
   },
+  "enable_video_message": {
+    "description": "启用视频回答",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后可通过回复视频消息或 mp4 等视频文件，发送“我问A你答”或“有人问A你答”保存视频回答。"
+  },
   "persist_image_as_base64": {
     "description": "将图片持久化为 base64",
     "type": "bool",
@@ -41,10 +47,10 @@
     "hint": "开启后会尽量把图片转为 base64 保存，降低平台临时图片 URL 过期风险。"
   },
   "enable_processing_feedback": {
-    "description": "启用图片保存处理反馈",
+    "description": "启用媒体保存处理反馈",
     "type": "bool",
     "default": true,
-    "hint": "保存图片回答可能较慢。开启后会优先给原消息添加 QQ 表情回应，失败时发送“正在保存图片回答”。"
+    "hint": "保存图片或视频回答可能较慢。开启后会优先给原消息添加 QQ 表情回应，失败时发送“正在保存媒体回答”。"
   },
   "processing_emoji_ids": {
     "description": "处理反馈 QQ 表情 ID 列表",
@@ -85,6 +91,24 @@
     "type": "int",
     "default": 5,
     "slider": { "min": 1, "max": 20, "step": 1 }
+  },
+  "max_videos_per_answer": {
+    "description": "单条回答视频数量上限",
+    "type": "int",
+    "default": 1,
+    "slider": { "min": 1, "max": 3, "step": 1 }
+  },
+  "max_video_size_mb": {
+    "description": "单个视频大小上限（MB）",
+    "type": "int",
+    "default": 50,
+    "slider": { "min": 1, "max": 500, "step": 1 }
+  },
+  "video_download_timeout_seconds": {
+    "description": "视频下载/转换超时（秒）",
+    "type": "int",
+    "default": 30,
+    "slider": { "min": 5, "max": 300, "step": 5 }
   },
   "max_questions_per_user_per_group": {
     "description": "单用户单群个人问答上限",

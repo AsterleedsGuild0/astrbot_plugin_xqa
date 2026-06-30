@@ -433,8 +433,12 @@ quote_reply: false
 cooldown_seconds: 0
 enable_global_question: false
 enable_image_message: true
+enable_video_message: true
 persist_image_as_base64: true
 max_images_per_answer: 5
+max_videos_per_answer: 1
+max_video_size_mb: 50
+video_download_timeout_seconds: 30
 enable_processing_feedback: true
 processing_emoji_ids:
   - "424"
@@ -469,8 +473,12 @@ permission_denied_notice: true
 | `cooldown_seconds` | `int` | `0` | 同群或同规则触发冷却时间。0 表示不启用冷却。 |
 | `enable_global_question` | `bool` | `false` | 是否启用 `全群问A你答B`、`全群不要回答A` 等跨群维护命令。 |
 | `enable_image_message` | `bool` | `true` | 是否支持图片回答以及文本 + 图片复合回答。 |
+| `enable_video_message` | `bool` | `true` | 是否支持通过回复视频消息或可识别的视频文件保存 video-only 视频回答。 |
 | `persist_image_as_base64` | `bool` | `true` | 是否尽量将图片转为 base64 持久化保存，降低临时图片 URL 过期风险。 |
 | `max_images_per_answer` | `int` | `5` | 单条回答最多允许保存的图片数量。 |
+| `max_videos_per_answer` | `int` | `1` | 单条回答最多允许保存的视频数量。首版固定为 video-only，建议保持 1。 |
+| `max_video_size_mb` | `int` | `50` | 单个视频文件大小上限。 |
+| `video_download_timeout_seconds` | `int` | `30` | 从引用消息下载或转换视频/视频文件到本地文件时的超时时间。 |
 | `enable_processing_feedback` | `bool` | `true` | 图片保存耗时较长时是否发送处理反馈。优先使用 QQ 表情回应，失败时发送文本提示。 |
 | `processing_emoji_ids` | `list[string]` | `["424", "66"]` | OneBot/NapCat `set_msg_emoji_like` 使用的表情 ID 候选列表。 |
 | `enable_data_export` | `bool` | `false` | 是否启用数据导出命令。属于维护功能，默认关闭。 |

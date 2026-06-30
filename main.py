@@ -12,8 +12,10 @@ from .core.message_codec import (
     build_components,
     chain_image_count,
     chain_text_length,
+    chain_video_count,
     has_answer_content,
     has_image_after_answer_delimiter,
+    has_replied_video_answer,
     parse_set_command_from_event,
     split_text_only_answer,
 )
@@ -33,8 +35,9 @@ class XQAPlugin(Star):
         super().__init__(context)
         self.context = context
         self.config = config
+        self.data_dir = StarTools.get_data_dir("astrbot_plugin_xqa")
         self.store = XQAStore(
-            StarTools.get_data_dir("astrbot_plugin_xqa"),
+            self.data_dir,
             filename=str(config.get("storage_filename", "xqa_data.json")),
         )
         self._cooldowns: dict[str, float] = {}
@@ -66,13 +69,15 @@ class XQAPlugin(Star):
             if isinstance(reply, str):
                 yield event.plain_result(reply)
             else:
-                yield event.chain_result(build_components(reply))
+                yield event.chain_result(
+                    build_components(reply, data_dir=self.data_dir)
+                )
             return
 
         reply = await self._match_reply(group_id, user_id, message)
         if reply is not None:
             event.stop_event()
-            yield event.chain_result(build_components(reply))
+            yield event.chain_result(build_components(reply, data_dir=self.data_dir))
 
     async def _handle_management_message(
         self, event: AstrMessageEvent, group_id: str, user_id: str, message: str
@@ -84,17 +89,25 @@ class XQAPlugin(Star):
         if message == "XQA清空本群所有我问" or message == "XQA清空本群所有有人问":
             return "暂未实现清空命令。请先使用“不要回答A”逐条删除。"
 
-        if self.config.get(
-            "enable_processing_feedback", True
-        ) and has_image_after_answer_delimiter(event):
-            await self._send_slow_image_save_ack(event)
+        if self.config.get("enable_processing_feedback", True) and (
+            has_image_after_answer_delimiter(event) or has_replied_video_answer(event)
+        ):
+            await self._send_slow_media_save_ack(event)
 
-        set_command = await parse_set_command_from_event(
-            event,
-            persist_image_as_base64=bool(
-                self.config.get("persist_image_as_base64", True)
-            ),
-        )
+        try:
+            set_command = await parse_set_command_from_event(
+                event,
+                persist_image_as_base64=bool(
+                    self.config.get("persist_image_as_base64", True)
+                ),
+                video_dir=self._video_dir(),
+                max_video_size_mb=int(self.config.get("max_video_size_mb", 50)),
+                video_download_timeout_seconds=int(
+                    self.config.get("video_download_timeout_seconds", 30)
+                ),
+            )
+        except ValueError as exc:
+            return str(exc)
         if set_command:
             question_type, question, answer_chain = set_command
             return await self._set_question(
@@ -142,9 +155,22 @@ class XQAPlugin(Star):
         ):
             return "当前配置未启用图片回答。"
 
+        if chain_video_count(answer_chain) > 0:
+            if not self.config.get("enable_video_message", True):
+                return "当前配置未启用视频回答。"
+            if (
+                chain_text_length(answer_chain) > 0
+                or chain_image_count(answer_chain) > 0
+            ):
+                return "视频回答暂只支持视频-only，请回复视频消息发送“我问A你答”或“有人问A你答”。"
+
         max_images = int(self.config.get("max_images_per_answer", 5))
         if chain_image_count(answer_chain) > max_images:
             return f"单条回答最多支持 {max_images} 张图片。"
+
+        max_videos = int(self.config.get("max_videos_per_answer", 1))
+        if chain_video_count(answer_chain) > max_videos:
+            return f"单条回答最多支持 {max_videos} 个视频。"
 
         max_answers = int(self.config.get("max_answers_per_question", 20))
         answers = split_text_only_answer(answer_chain, max_answers)
@@ -346,11 +372,11 @@ class XQAPlugin(Star):
             return f"权限不足：{text}"
         return ""
 
-    async def _send_slow_image_save_ack(self, event: AstrMessageEvent) -> None:
-        if await self._try_send_qq_emoji_feedback(event, action="save-image-answer"):
+    async def _send_slow_media_save_ack(self, event: AstrMessageEvent) -> None:
+        if await self._try_send_qq_emoji_feedback(event, action="save-media-answer"):
             return
         try:
-            await event.send(MessageChain().message("正在保存图片回答，请稍候…"))
+            await event.send(MessageChain().message("正在保存媒体回答，请稍候…"))
             logger.debug(
                 f"[XQA] processing acknowledgement sent {self._event_context(event)}"
             )
@@ -492,6 +518,11 @@ class XQAPlugin(Star):
             f"sender={event.get_sender_id() or '-'}"
         )
 
+    def _video_dir(self):
+        from pathlib import Path
+
+        return Path(self.data_dir) / "videos"
+
     def _help_text(self) -> str:
         return """XQA 问答帮助
 
@@ -509,4 +540,5 @@ class XQAPlugin(Star):
 高级：
 - 支持正则问题与 $1、$2 回流
 - 支持 # 分隔随机回答，\\# 表示普通井号
+- 支持图片回答；视频回答请先发视频，再回复视频发送“我问A你答”或“有人问A你答”
 """.strip()
