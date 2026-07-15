@@ -12,10 +12,22 @@
     "hint": "除 AstrBot 管理员外，列表内用户也可管理公共问答。"
   },
   "allow_group_admin_toggle_self_question": {
-    "description": "允许管理员启停个人问答",
+    "description": "允许群管理员启停个人问答",
     "type": "bool",
     "default": false,
-    "hint": "当前实现使用 AstrBot 管理员/插件管理员判断。"
+    "hint": "开启后 QQ 群主/群管理员可使用“XQA禁用我问”和“XQA启用我问”；AstrBot 管理员/插件管理员始终可用。"
+  },
+  "group_plugin_enabled_default": {
+    "description": "新群默认启用 XQA 插件",
+    "type": "bool",
+    "default": true,
+    "hint": "关闭后新群默认不处理任何 XQA 问答匹配和管理命令（除启用命令）。"
+  },
+  "allow_group_admin_toggle_group_plugin": {
+    "description": "允许群管理员启停本群 XQA 插件",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 QQ 群主/群管理员可使用“XQA禁用本群”和“XQA启用本群”。"
   },
   "allow_group_admin_manage_public_questions": {
     "description": "允许群管理员管理公共问答",
@@ -103,6 +115,13 @@
     "type": "int",
     "default": 50,
     "slider": { "min": 1, "max": 500, "step": 1 }
+  },
+  "max_video_storage_mb": {
+    "description": "视频存储总量上限（MB）",
+    "type": "int",
+    "default": 1024,
+    "slider": { "min": 0, "max": 10240, "step": 128 },
+    "hint": "限制插件视频目录内普通文件的总大小；设为 0 表示不限制。相同内容的视频会复用已有文件。"
   },
   "video_download_timeout_seconds": {
     "description": "视频下载/转换超时（秒）",

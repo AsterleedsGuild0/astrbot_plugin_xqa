@@ -82,6 +82,20 @@ class XQAPlugin(Star):
     async def _handle_management_message(
         self, event: AstrMessageEvent, group_id: str, user_id: str, message: str
     ) -> str | AnswerChain | None:
+        # 处理本群 XQA 总开关
+        if message in {"XQA禁用本群", "XQA启用本群"}:
+            return await self._toggle_group_plugin(
+                event, group_id, message.endswith("启用本群")
+            )
+
+        group_plugin_default = bool(
+            self.config.get("group_plugin_enabled_default", True)
+        )
+        if not self.store.is_group_enabled(group_id, group_plugin_default):
+            if self._is_xqa_command_like(message):
+                return "本群已禁用 XQA。发送“XQA启用本群”可恢复。"
+            return None
+
         if message in {"XQA禁用我问", "XQA启用我问"}:
             return await self._toggle_self_question(
                 event, group_id, message.endswith("启用我问")
@@ -102,6 +116,7 @@ class XQAPlugin(Star):
                 ),
                 video_dir=self._video_dir(),
                 max_video_size_mb=int(self.config.get("max_video_size_mb", 50)),
+                max_video_storage_mb=int(self.config.get("max_video_storage_mb", 1024)),
                 video_download_timeout_seconds=int(
                     self.config.get("video_download_timeout_seconds", 30)
                 ),
@@ -280,19 +295,47 @@ class XQAPlugin(Star):
     async def _toggle_self_question(
         self, event: AstrMessageEvent, group_id: str, enabled: bool
     ) -> str:
-        allow_admin = bool(
-            self.config.get("allow_group_admin_toggle_self_question", False)
-        )
-        if not allow_admin and not await self._is_plugin_admin(event):
-            return self._permission_denied("该命令仅限管理员使用。")
-        if allow_admin and not await self._is_plugin_admin(event):
+        if not await self._can_toggle_self_question(event):
             return self._permission_denied("该命令仅限管理员使用。")
         await self.store.set_self_enabled(group_id, enabled)
         return "本群已启用个人问答功能。" if enabled else "本群已禁用个人问答功能。"
 
+    async def _toggle_group_plugin(
+        self, event: AstrMessageEvent, group_id: str, enabled: bool
+    ) -> str:
+        if not await self._can_toggle_group_plugin(event):
+            return self._permission_denied("该命令仅限管理员使用。")
+        await self.store.set_group_enabled(group_id, enabled)
+        return "本群已启用 XQA。" if enabled else "本群已禁用 XQA。"
+
+    def _is_xqa_command_like(self, message: str) -> bool:
+        if message.startswith(("XQA", "xqa")):
+            return True
+        if SHOW_PATTERN.match(message) or DELETE_PATTERN.match(message):
+            return True
+        return "你答" in message and message.startswith(("我问", "有人问", "全群问"))
+
+    async def _can_toggle_group_plugin(self, event: AstrMessageEvent) -> bool:
+        if await self._is_plugin_admin(event):
+            return True
+        if not self.config.get("allow_group_admin_toggle_group_plugin", True):
+            return False
+        return await self._is_group_admin(event)
+
+    async def _can_toggle_self_question(self, event: AstrMessageEvent) -> bool:
+        if await self._is_plugin_admin(event):
+            return True
+        if not self.config.get("allow_group_admin_toggle_self_question", False):
+            return False
+        return await self._is_group_admin(event)
+
     async def _match_reply(
         self, group_id: str, user_id: str, message: str
     ) -> AnswerChain | None:
+        if not self.store.is_group_enabled(
+            group_id, bool(self.config.get("group_plugin_enabled_default", True))
+        ):
+            return None
         if self._is_in_cooldown(group_id):
             return None
         enable_regex = bool(self.config.get("enable_regex_question", True))
@@ -536,6 +579,12 @@ class XQAPlugin(Star):
 
 删除：
 - 不要回答A：删除自己的问答；管理员可删除公共问答
+
+管理：
+- XQA禁用本群：管理员禁用本群全部 XQA 功能
+- XQA启用本群：管理员启用本群全部 XQA 功能
+- XQA禁用我问：禁用本群个人问答
+- XQA启用我问：启用本群个人问答
 
 高级：
 - 支持正则问题与 $1、$2 回流

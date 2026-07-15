@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import re
 import asyncio
 import hashlib
+import re
 import shutil
 from pathlib import Path
 from typing import Any, TypeAlias
@@ -88,6 +88,7 @@ async def parse_set_command_from_event(
     persist_image_as_base64: bool = True,
     video_dir: str | Path | None = None,
     max_video_size_mb: int = 50,
+    max_video_storage_mb: int = 1024,
     video_download_timeout_seconds: int = 30,
 ) -> tuple[str, str, AnswerChain] | None:
     before_text, answer_chain = await _split_set_command_components(
@@ -103,6 +104,7 @@ async def parse_set_command_from_event(
             event,
             video_dir=video_dir,
             max_video_size_mb=max_video_size_mb,
+            max_video_storage_mb=max_video_storage_mb,
             timeout_seconds=video_download_timeout_seconds,
         )
         if video_chain:
@@ -129,9 +131,11 @@ def build_components(
             elif source == "url":
                 components.append(Image.fromURL(value))
             elif source == "file":
-                components.append(
-                    Image.fromFileSystem(_resolve_file_value(value, data_dir))
-                )
+                path = _resolve_file_value(value, data_dir)
+                if path is None:
+                    logger.warning(f"[XQA] 跳过不安全或不存在的本地图片: {value}")
+                    continue
+                components.append(Image.fromFileSystem(path))
             else:
                 components.append(Image(file=value))
         elif seg.get("type") == "video":
@@ -142,9 +146,11 @@ def build_components(
             if source == "url":
                 components.append(Video.fromURL(value))
             elif source == "file":
-                components.append(
-                    Video.fromFileSystem(_resolve_file_value(value, data_dir))
-                )
+                path = _resolve_file_value(value, data_dir)
+                if path is None:
+                    logger.warning(f"[XQA] 跳过不安全或不存在的本地视频: {value}")
+                    continue
+                components.append(Video.fromFileSystem(path))
             else:
                 components.append(Video(file=value))
     return components
@@ -274,6 +280,7 @@ async def _extract_replied_video_answer(
     *,
     video_dir: str | Path | None,
     max_video_size_mb: int,
+    max_video_storage_mb: int,
     timeout_seconds: int,
 ) -> AnswerChain:
     if video_dir is None:
@@ -287,6 +294,7 @@ async def _extract_replied_video_answer(
                     item,
                     video_dir=Path(video_dir),
                     max_video_size_mb=max_video_size_mb,
+                    max_video_storage_mb=max_video_storage_mb,
                     timeout_seconds=timeout_seconds,
                 )
                 return [segment] if segment else []
@@ -295,6 +303,7 @@ async def _extract_replied_video_answer(
                     item,
                     video_dir=Path(video_dir),
                     max_video_size_mb=max_video_size_mb,
+                    max_video_storage_mb=max_video_storage_mb,
                     timeout_seconds=timeout_seconds,
                 )
                 return [segment] if segment else []
@@ -306,6 +315,7 @@ async def _persist_video(
     *,
     video_dir: Path,
     max_video_size_mb: int,
+    max_video_storage_mb: int,
     timeout_seconds: int,
 ) -> AnswerSegment | None:
     video_dir.mkdir(parents=True, exist_ok=True)
@@ -322,6 +332,7 @@ async def _persist_video(
         Path(source_path),
         video_dir=video_dir,
         max_video_size_mb=max_video_size_mb,
+        max_video_storage_mb=max_video_storage_mb,
     )
 
 
@@ -330,6 +341,7 @@ async def _persist_video_file(
     *,
     video_dir: Path,
     max_video_size_mb: int,
+    max_video_storage_mb: int,
     timeout_seconds: int,
 ) -> AnswerSegment | None:
     try:
@@ -347,6 +359,7 @@ async def _persist_video_file(
         source,
         video_dir=video_dir,
         max_video_size_mb=max_video_size_mb,
+        max_video_storage_mb=max_video_storage_mb,
         suffix_hint=suffix_hint,
     )
 
@@ -356,6 +369,7 @@ def _persist_video_path(
     *,
     video_dir: Path,
     max_video_size_mb: int,
+    max_video_storage_mb: int = 1024,
     suffix_hint: str = "",
 ) -> AnswerSegment | None:
     video_dir.mkdir(parents=True, exist_ok=True)
@@ -370,14 +384,44 @@ def _persist_video_path(
     digest = _file_sha256(source)
     suffix = source.suffix or suffix_hint or ".mp4"
     target = video_dir / f"{digest}{suffix}"
-    if not target.exists():
-        shutil.copy2(source, target)
-        logger.info(f"[XQA] 视频回答已保存 path={target} size={file_size}")
+    if target.exists():
+        return {
+            "type": "video",
+            "source": "file",
+            "value": str(Path("videos") / target.name),
+        }
+
+    storage_limit_bytes = max_video_storage_mb * 1024 * 1024
+    if storage_limit_bytes > 0:
+        current_size = _video_storage_size(video_dir)
+        if current_size + file_size > storage_limit_bytes:
+            raise ValueError(
+                "视频存储空间已达到上限"
+                f"（{max_video_storage_mb} MB），请清理旧视频或调整配置。"
+            )
+
+    shutil.copy2(source, target)
+    logger.info(f"[XQA] 视频回答已保存 path={target} size={file_size}")
     return {
         "type": "video",
         "source": "file",
         "value": str(Path("videos") / target.name),
     }
+
+
+def _video_storage_size(video_dir: Path) -> int:
+    total_size = 0
+    for entry in video_dir.iterdir():
+        try:
+            if entry.is_symlink() or not entry.is_file():
+                continue
+            total_size += entry.stat().st_size
+        except OSError as exc:
+            logger.warning(
+                "[XQA] 统计视频存储空间时跳过不可访问文件 "
+                f"path={entry} error={type(exc).__name__}: {exc}"
+            )
+    return total_size
 
 
 def _is_video_file_component(file: File) -> bool:
@@ -411,8 +455,14 @@ def _file_sha256(path: Path) -> str:
     return hasher.hexdigest()
 
 
-def _resolve_file_value(value: str, data_dir: str | Path | None) -> str:
-    path = Path(value)
-    if path.is_absolute() or data_dir is None:
-        return str(path)
-    return str(Path(data_dir) / path)
+def _resolve_file_value(value: str, data_dir: str | Path | None) -> str | None:
+    if data_dir is None:
+        return None
+    try:
+        root = Path(data_dir).resolve()
+        path = Path(value)
+        resolved = path.resolve() if path.is_absolute() else (root / path).resolve()
+        resolved.relative_to(root)
+        return str(resolved) if resolved.is_file() else None
+    except (OSError, RuntimeError, ValueError):
+        return None

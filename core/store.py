@@ -61,6 +61,24 @@ class XQAStore:
         config[group_id] = group_config
         await self.save()
 
+    def is_group_enabled(self, group_id: str, default: bool = True) -> bool:
+        config = self.data.setdefault("config", {})
+        assert isinstance(config, dict)
+        group_config = config.get(group_id, {})
+        if not isinstance(group_config, dict):
+            return default
+        return bool(group_config.get("group_enabled", default))
+
+    async def set_group_enabled(self, group_id: str, enabled: bool) -> None:
+        config = self.data.setdefault("config", {})
+        assert isinstance(config, dict)
+        group_config = config.get(group_id, {})
+        if not isinstance(group_config, dict):
+            group_config = {}
+        group_config["group_enabled"] = enabled
+        config[group_id] = group_config
+        await self.save()
+
     def _group(self, group_id: str) -> dict[str, object]:
         groups = self.data.setdefault("groups", {})
         assert isinstance(groups, dict)

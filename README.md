@@ -219,6 +219,8 @@ plugin_data/astrbot_plugin_xqa/videos/
 
 当前限制：视频回答首版只支持 video-only，不支持“文字 + 视频”同条回答。
 
+单个视频默认限制为 50 MB；视频目录默认总量限制为 1024 MB。写入新视频前会统计目录内普通文件的总大小，达到上限时提示清理旧视频或调整配置。相同 SHA256 的视频会复用已有文件，不会重复占用容量；将 `max_video_storage_mb` 设为 `0` 可关闭总量限制。
+
 ---
 
 ## 功能菜单
@@ -241,6 +243,8 @@ plugin_data/astrbot_plugin_xqa/videos/
 
 | 命令 | 说明 |
 | --- | --- |
+| `XQA禁用本群` | 禁用本群全部 XQA 问答功能 |
+| `XQA启用本群` | 启用本群全部 XQA 问答功能 |
 | `XQA禁用我问` | 禁用本群个人问答 |
 | `XQA启用我问` | 启用本群个人问答 |
 
@@ -254,6 +258,9 @@ plugin_data/astrbot_plugin_xqa/videos/
 | --- | --- | --- |
 | `self_question_enabled_default` | `true` | 新群默认是否启用个人问答 |
 | `admin_users` | `[]` | 插件管理员用户 ID 列表 |
+| `allow_group_admin_toggle_self_question` | `false` | 是否允许 QQ 群主/群管理员启停本群个人问答；AstrBot 管理员/插件管理员始终允许 |
+| `group_plugin_enabled_default` | `true` | 新群默认是否启用 XQA 插件 |
+| `allow_group_admin_toggle_group_plugin` | `true` | 是否允许群管理员启停本群 XQA 插件 |
 | `allow_group_admin_manage_public_questions` | `true` | 是否允许 QQ 群主/群管理员管理公共问答 |
 | `enable_regex_question` | `true` | 是否启用正则问题 |
 | `enable_image_message` | `true` | 是否启用图片回答 |
@@ -269,6 +276,7 @@ plugin_data/astrbot_plugin_xqa/videos/
 | `max_images_per_answer` | `5` | 单条回答图片数量上限 |
 | `max_videos_per_answer` | `1` | 单条回答视频数量上限 |
 | `max_video_size_mb` | `50` | 单个视频大小上限 |
+| `max_video_storage_mb` | `1024` | 视频目录存储总量上限（MB）；`0` 表示不限制，相同 SHA256 文件会复用 |
 | `video_download_timeout_seconds` | `30` | 视频下载/转换超时 |
 | `max_questions_per_user_per_group` | `100` | 单用户单群个人问答上限 |
 | `max_public_questions_per_group` | `300` | 单群公共问答上限 |
@@ -316,8 +324,9 @@ PRD.md
 推荐发布方式：
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+VERSION=v0.1.2
+git tag "$VERSION"
+git push origin "$VERSION"
 ```
 
 推送 `v*` tag 后，GitHub Actions 会自动：

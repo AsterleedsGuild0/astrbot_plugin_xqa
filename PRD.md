@@ -306,6 +306,8 @@ Bot 回复：
 
 ### 6.7 群级开关
 
+#### 6.7.1 个人问答开关
+
 命令：
 
 ```text
@@ -321,6 +323,26 @@ XQA启用我问
   - 自动回复时不匹配个人问答。
   - 查看个人问答可返回禁用提示。
 - 公共问答不受影响。
+
+#### 6.7.2 本群 XQA 插件总开关
+
+命令：
+
+```text
+XQA禁用本群
+XQA启用本群
+```
+
+要求：
+
+- 需要 Bot 超级管理员权限，或配置项允许群管理员操作。
+- 禁用后：
+  - 本群不处理任何自动问答匹配。
+  - 本群不处理普通设置、删除、查看命令，返回明确提示。
+  - 有权限用户仍可执行 `XQA启用本群` 恢复。
+  - 原有问答数据不会丢失。
+  - `问答帮助` 命令不受影响。
+- 启用后，本群恢复原有问答数据的正常匹配。
 
 ### 6.8 清空能力
 
@@ -407,6 +429,7 @@ XQA帮助
 | 删除本群 `有人问` | 禁止 | 允许 | 允许 |
 | 删除他人 `我问` | 禁止 | 允许 | 允许 |
 | 启停个人问答 | 禁止 | 可配置 | 允许 |
+| 启停本群 XQA 插件 | 禁止 | 可配置 | 允许 |
 | 清空本群问答 | 禁止 | 可配置 | 允许 |
 
 ---
@@ -438,6 +461,7 @@ persist_image_as_base64: true
 max_images_per_answer: 5
 max_videos_per_answer: 1
 max_video_size_mb: 50
+max_video_storage_mb: 1024
 video_download_timeout_seconds: 30
 enable_processing_feedback: true
 processing_emoji_ids:
@@ -458,6 +482,8 @@ permission_denied_notice: true
 | --- | --- | --- | --- |
 | `self_question_enabled_default` | `bool` | `true` | 新群默认是否启用个人问答。关闭后，普通成员不能使用 `我问A你答B`，自动回复也不会匹配个人问答。 |
 | `allow_group_admin_toggle_self_question` | `bool` | `false` | 是否允许群管理员使用 `XQA启用我问` / `XQA禁用我问`。关闭时仅 Bot 超级管理员可操作。 |
+| `group_plugin_enabled_default` | `bool` | `true` | 新群默认是否启用 XQA 插件。关闭后新群默认不处理任何问答匹配和管理命令。 |
+| `allow_group_admin_toggle_group_plugin` | `bool` | `true` | 是否允许群管理员使用 `XQA启用本群` / `XQA禁用本群`。关闭时仅 Bot 超级管理员可操作。 |
 | `allow_group_admin_clear_questions` | `bool` | `false` | 是否允许群管理员清空本群问答。默认关闭，避免误删大量数据。 |
 | `allow_group_admin_manage_public_questions` | `bool` | `true` | 是否允许 QQ 群主/群管理员设置和删除本群公共问答。 |
 | `enable_regex_question` | `bool` | `true` | 是否允许问题文本作为正则表达式参与匹配。关闭后仅支持完全匹配。 |
@@ -478,6 +504,7 @@ permission_denied_notice: true
 | `max_images_per_answer` | `int` | `5` | 单条回答最多允许保存的图片数量。 |
 | `max_videos_per_answer` | `int` | `1` | 单条回答最多允许保存的视频数量。首版固定为 video-only，建议保持 1。 |
 | `max_video_size_mb` | `int` | `50` | 单个视频文件大小上限。 |
+| `max_video_storage_mb` | `int` | `1024` | 视频目录普通文件存储总量上限，写入新文件前校验；`0` 表示不限制，相同 SHA256 的已有视频直接复用。 |
 | `video_download_timeout_seconds` | `int` | `30` | 从引用消息下载或转换视频/视频文件到本地文件时的超时时间。 |
 | `enable_processing_feedback` | `bool` | `true` | 图片保存耗时较长时是否发送处理反馈。优先使用 QQ 表情回应，失败时发送文本提示。 |
 | `processing_emoji_ids` | `list[string]` | `["424", "66"]` | OneBot/NapCat `set_msg_emoji_like` 使用的表情 ID 候选列表。 |
@@ -495,6 +522,7 @@ permission_denied_notice: true
 - 运行时配置变更是否热更新，以 AstrBot 插件机制为准；无法热更新时需在 README 中说明需要重载插件或重启 AstrBot。
 - 高危能力默认关闭，包括跨群写入、清空、导入、重建等。
 - 所有数量限制应在写入前校验，并返回清晰错误提示。
+- 视频总量统计应忽略目录和损坏 symlink；单个文件不可访问时记录 warning 并继续，避免插件整体失败。
 - 配置默认值应尽量接近 XQA 原始体验，但优先保证安全和可控。
 
 ---
