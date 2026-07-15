@@ -2,7 +2,7 @@
 
 ## 1. 背景
 
-AstrBot 生态已有关键词回复类插件，但主流交互通常是 `/添加检测词 <关键词> <回复>` 这类命令式格式。YuiChyanBot / XQA 提供了更符合群聊自然表达的“问答记忆”交互：
+AstrBot 生态已有关键词回复类插件，但主流交互通常是 `/添加检测词 <关键词> <回复>` 这类命令式格式。[AZMIAO/YuiChyanBot](https://github.com/azmiao/YuiChyanBot)  提供了更符合群聊自然表达的“问答记忆”交互：
 
 ```text
 我问XXX你答XXX
@@ -29,6 +29,15 @@ AstrBot 生态已有关键词回复类插件，但主流交互通常是 `/添加
 - 提供基础管理能力：查看、搜索、删除、启停个人问答。
 - 兼容 AstrBot 插件体系，尽量少依赖外部服务。
 
+### 2.1 当前实现状态（v0.1.2）
+
+- 已实现本群 XQA 插件总开关，以及按权限启停本群个人问答。
+- 已支持回复 QQ 视频消息，或 `.mp4` / `.mov` / `.m4v` / `.webm` 文件，设置 video-only 回答。
+- 已增加媒体路径安全校验，避免使用越界路径或不安全的本地媒体文件。
+- 已实现单个视频大小限制和视频目录总量限制，相同 SHA256 的视频可复用已有文件。
+- 已建立 AstrBot 管理员、插件 `admin_users`、QQ 群主/群管理员和普通成员的权限映射。
+- 当前共有 27 项 unittest，覆盖群级启停、权限矩阵、媒体路径安全和视频存储限制。
+
 ---
 
 ## 3. 非目标
@@ -37,7 +46,7 @@ AstrBot 生态已有关键词回复类插件，但主流交互通常是 `/添加
 - 首版不强制实现完整 WebUI / Pages 管理界面。
 - 首版不实现跨 Bot、跨 AstrBot 实例的数据同步。
 - 首版不保证完全兼容 HoshinoBot XQA 的历史数据格式，但应预留导入能力。
-- 首版不实现复杂的权限系统，只映射 AstrBot 可获得的管理员、超级管理员、普通成员权限。
+- 不引入独立 RBAC；权限映射到 AstrBot 管理员、插件 `admin_users`、QQ 群主/群管理员和普通成员。
 
 ---
 
@@ -55,10 +64,10 @@ AstrBot 生态已有关键词回复类插件，但主流交互通常是 `/添加
 - 可以查看、搜索、删除本群公共问答。
 - 可以查看或删除指定成员的个人问答。
 
-### 4.3 Bot 超级管理员
+### 4.3 AstrBot 管理员 / 插件管理员
 
 - 可以启用或禁用某群个人问答功能。
-- 可以清空某群个人问答或公共问答。
+- 规划中可清空某群个人问答或公共问答；`v0.1.2` 仅返回暂未实现提示。
 - 可选支持全群问答、数据导入导出、跨群复制等高级维护能力。
 
 ---
@@ -99,7 +108,7 @@ Bot 回复：
 
 ### 5.3 全群问答
 
-维护能力。由超级管理员通过 `全群问A你答B` 设置，将公共问答写入 Bot 所在多个群。
+维护能力。规划由 AstrBot 管理员或插件 `admin_users` 通过 `全群问A你答B` 设置，将公共问答写入 Bot 所在多个群。
 
 首版可以作为 P1 或 P2 能力，不强制进入 MVP。
 
@@ -136,7 +145,7 @@ Bot 回复：
 要求：
 
 - 仅群聊生效。
-- 需要群管理员、群主或 Bot 超级管理员权限。
+- 需要 QQ 群管理员、群主、AstrBot 管理员或插件 `admin_users` 权限。
 - 同一群重复设置相同问题时覆盖旧回答。
 
 #### 6.1.3 全群问答
@@ -149,7 +158,7 @@ Bot 回复：
 
 要求：
 
-- 需要 Bot 超级管理员权限。
+- 需要 AstrBot 管理员或插件 `admin_users` 权限。
 - 写入范围为 Bot 当前可识别的所有群，或配置中允许的群。
 - 首版可暂不实现，但 PRD 预留。
 
@@ -260,7 +269,7 @@ Bot 回复：
 
 要求：
 
-- 需要群管理员、群主或 Bot 超级管理员权限。
+- 需要 QQ 群管理员、群主、AstrBot 管理员或插件 `admin_users` 权限。
 - 返回指定成员在当前群设置的个人问答列表。
 
 ### 6.6 删除问答
@@ -289,7 +298,7 @@ Bot 回复：
 
 要求：
 
-- 需要群管理员、群主或 Bot 超级管理员权限。
+- 需要 QQ 群管理员、群主、AstrBot 管理员或插件 `admin_users` 权限。
 
 #### 6.6.3 删除全群问答
 
@@ -301,7 +310,7 @@ Bot 回复：
 
 要求：
 
-- 需要 Bot 超级管理员权限。
+- 需要 AstrBot 管理员或插件 `admin_users` 权限。
 - 首版可作为 P1 / P2 能力。
 
 ### 6.7 群级开关
@@ -317,7 +326,7 @@ XQA启用我问
 
 要求：
 
-- 需要 Bot 超级管理员权限，或配置项允许群管理员操作。
+- 需要 AstrBot 管理员或插件 `admin_users` 权限，或配置项允许 QQ 群主/群管理员操作。
 - 禁用后：
   - 普通成员不能设置 `我问`。
   - 自动回复时不匹配个人问答。
@@ -335,7 +344,7 @@ XQA启用本群
 
 要求：
 
-- 需要 Bot 超级管理员权限，或配置项允许群管理员操作。
+- 需要 AstrBot 管理员或插件 `admin_users` 权限，或配置项允许 QQ 群主/群管理员操作。
 - 禁用后：
   - 本群不处理任何自动问答匹配。
   - 本群不处理普通设置、删除、查看命令，返回明确提示。
@@ -346,6 +355,8 @@ XQA启用本群
 
 ### 6.8 清空能力
 
+当前 `v0.1.2` 尚未实现清空操作，以下两个命令只返回暂未实现提示；本节为规划需求。
+
 命令：
 
 ```text
@@ -355,7 +366,7 @@ XQA清空本群所有有人问
 
 要求：
 
-- 需要 Bot 超级管理员权限。
+- 需要 AstrBot 管理员或插件 `admin_users` 权限。
 - 操作前建议二次确认，或至少在配置项中支持禁用高危命令。
 
 ### 6.9 帮助
@@ -417,7 +428,7 @@ XQA帮助
 
 ## 8. 权限需求
 
-| 功能 | 普通成员 | 群管理员 / 群主 | Bot 超级管理员 |
+| 功能 | 普通成员 | QQ 群管理员 / 群主 | AstrBot 管理员 / 插件 `admin_users` |
 | --- | --- | --- | --- |
 | 设置 `我问` | 允许 | 允许 | 允许 |
 | 设置 `有人问` | 禁止 | 允许 | 允许 |
@@ -430,91 +441,61 @@ XQA帮助
 | 删除他人 `我问` | 禁止 | 允许 | 允许 |
 | 启停个人问答 | 禁止 | 可配置 | 允许 |
 | 启停本群 XQA 插件 | 禁止 | 可配置 | 允许 |
-| 清空本群问答 | 禁止 | 可配置 | 允许 |
+| 清空本群问答 | 禁止 | 规划为可配置 | 规划允许；当前未实现 |
 
 ---
 
 ## 9. 配置项需求
 
-建议提供以下配置项：
+### 9.1 当前已实现配置
 
-```yaml
-self_question_enabled_default: true
-allow_group_admin_toggle_self_question: false
-allow_group_admin_clear_questions: false
-allow_group_admin_manage_public_questions: true
-enable_regex_question: true
-max_question_length: 200
-max_answer_length: 1000
-max_answers_per_question: 20
-max_questions_per_user_per_group: 100
-max_public_questions_per_group: 300
-reject_empty_regex: true
-reject_dangerous_regex: true
-match_timeout_ms: 50
-quote_reply: false
-cooldown_seconds: 0
-enable_global_question: false
-enable_image_message: true
-enable_video_message: true
-persist_image_as_base64: true
-max_images_per_answer: 5
-max_videos_per_answer: 1
-max_video_size_mb: 50
-max_video_storage_mb: 1024
-video_download_timeout_seconds: 30
-enable_processing_feedback: true
-processing_emoji_ids:
-  - "424"
-  - "66"
-enable_data_export: false
-enable_data_import: false
-storage_backend: json
-storage_filename: xqa_data.json
-list_page_size: 30
-command_prefix_required: false
-permission_denied_notice: true
-```
-
-配置项说明：
+以下配置已进入当前 `_conf_schema.json`：
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `self_question_enabled_default` | `bool` | `true` | 新群默认是否启用个人问答。关闭后，普通成员不能使用 `我问A你答B`，自动回复也不会匹配个人问答。 |
-| `allow_group_admin_toggle_self_question` | `bool` | `false` | 是否允许群管理员使用 `XQA启用我问` / `XQA禁用我问`。关闭时仅 Bot 超级管理员可操作。 |
-| `group_plugin_enabled_default` | `bool` | `true` | 新群默认是否启用 XQA 插件。关闭后新群默认不处理任何问答匹配和管理命令。 |
-| `allow_group_admin_toggle_group_plugin` | `bool` | `true` | 是否允许群管理员使用 `XQA启用本群` / `XQA禁用本群`。关闭时仅 Bot 超级管理员可操作。 |
-| `allow_group_admin_clear_questions` | `bool` | `false` | 是否允许群管理员清空本群问答。默认关闭，避免误删大量数据。 |
+| `self_question_enabled_default` | `bool` | `true` | 新群默认是否启用个人问答。 |
+| `admin_users` | `list` | `[]` | 插件管理员用户 ID 列表；与 AstrBot 管理员共同构成插件管理权限来源。 |
+| `allow_group_admin_toggle_self_question` | `bool` | `false` | 是否允许 QQ 群主/群管理员使用 `XQA启用我问` / `XQA禁用我问`；AstrBot 管理员和插件管理员始终允许。 |
+| `group_plugin_enabled_default` | `bool` | `true` | 新群默认是否启用 XQA 插件。 |
+| `allow_group_admin_toggle_group_plugin` | `bool` | `true` | 是否允许 QQ 群主/群管理员使用 `XQA启用本群` / `XQA禁用本群`。 |
 | `allow_group_admin_manage_public_questions` | `bool` | `true` | 是否允许 QQ 群主/群管理员设置和删除本群公共问答。 |
-| `enable_regex_question` | `bool` | `true` | 是否允许问题文本作为正则表达式参与匹配。关闭后仅支持完全匹配。 |
-| `max_question_length` | `int` | `200` | 单个问题最大字符数。用于限制超长问题和异常正则。 |
-| `max_answer_length` | `int` | `1000` | 单条原始回答最大字符数，按用户输入的完整回答计算。 |
-| `max_answers_per_question` | `int` | `20` | 单个问题最多允许的随机回答数量，即 `#` 分割后的候选答案上限。 |
-| `max_questions_per_user_per_group` | `int` | `100` | 单个用户在单个群内最多可设置的个人问答数量。 |
-| `max_public_questions_per_group` | `int` | `300` | 单个群最多可设置的公共问答数量。 |
-| `reject_empty_regex` | `bool` | `true` | 是否拒绝可匹配空字符串或明显泛匹配的问题，例如空问题、`.*` 等。 |
-| `reject_dangerous_regex` | `bool` | `true` | 是否启用危险正则拦截。首版可先实现保守规则，后续再引入更完整的 ReDoS 检测。 |
-| `match_timeout_ms` | `int` | `50` | 单条正则匹配的目标超时时间。若使用 Python 标准 `re` 无法直接超时，应在实现说明中注明采用保守检测或第三方库。 |
-| `quote_reply` | `bool` | `false` | 自动回复时是否引用触发消息。 |
-| `cooldown_seconds` | `int` | `0` | 同群或同规则触发冷却时间。0 表示不启用冷却。 |
-| `enable_global_question` | `bool` | `false` | 是否启用 `全群问A你答B`、`全群不要回答A` 等跨群维护命令。 |
+| `enable_regex_question` | `bool` | `true` | 是否允许问题文本作为正则表达式参与匹配。 |
 | `enable_image_message` | `bool` | `true` | 是否支持图片回答以及文本 + 图片复合回答。 |
-| `enable_video_message` | `bool` | `true` | 是否支持通过回复视频消息或可识别的视频文件保存 video-only 视频回答。 |
-| `persist_image_as_base64` | `bool` | `true` | 是否尽量将图片转为 base64 持久化保存，降低临时图片 URL 过期风险。 |
-| `max_images_per_answer` | `int` | `5` | 单条回答最多允许保存的图片数量。 |
-| `max_videos_per_answer` | `int` | `1` | 单条回答最多允许保存的视频数量。首版固定为 video-only，建议保持 1。 |
+| `enable_video_message` | `bool` | `true` | 是否支持回复视频消息或可识别的视频文件保存 video-only 回答。 |
+| `persist_image_as_base64` | `bool` | `true` | 是否尽量将图片转为 base64 持久化保存。 |
+| `enable_processing_feedback` | `bool` | `true` | 保存图片或视频回答时是否发送处理反馈。 |
+| `processing_emoji_ids` | `list` | `["424", "66"]` | OneBot/NapCat `set_msg_emoji_like` 使用的表情 ID 候选列表。 |
+| `reject_empty_regex` | `bool` | `true` | 是否拒绝可匹配空字符串或明显泛匹配的问题。 |
+| `reject_dangerous_regex` | `bool` | `true` | 是否启用常见危险正则拦截。 |
+| `max_question_length` | `int` | `200` | 单个问题最大字符数。 |
+| `max_answer_length` | `int` | `1000` | 单条原始回答最大字符数。 |
+| `max_answers_per_question` | `int` | `20` | 单个问题的随机回答数量上限。 |
+| `max_images_per_answer` | `int` | `5` | 单条回答图片数量上限。 |
+| `max_videos_per_answer` | `int` | `1` | 单条回答视频数量上限；当前回答模式为 video-only。 |
 | `max_video_size_mb` | `int` | `50` | 单个视频文件大小上限。 |
-| `max_video_storage_mb` | `int` | `1024` | 视频目录普通文件存储总量上限，写入新文件前校验；`0` 表示不限制，相同 SHA256 的已有视频直接复用。 |
-| `video_download_timeout_seconds` | `int` | `30` | 从引用消息下载或转换视频/视频文件到本地文件时的超时时间。 |
-| `enable_processing_feedback` | `bool` | `true` | 图片保存耗时较长时是否发送处理反馈。优先使用 QQ 表情回应，失败时发送文本提示。 |
-| `processing_emoji_ids` | `list[string]` | `["424", "66"]` | OneBot/NapCat `set_msg_emoji_like` 使用的表情 ID 候选列表。 |
-| `enable_data_export` | `bool` | `false` | 是否启用数据导出命令。属于维护功能，默认关闭。 |
-| `enable_data_import` | `bool` | `false` | 是否启用数据导入或重建命令。属于高危维护功能，默认关闭。 |
-| `storage_backend` | `string` | `json` | 数据存储后端。首版建议支持 `json`，后续可扩展为 `sqlite`。 |
-| `storage_filename` | `string` | `xqa_data.json` | 数据文件名。文件应位于 AstrBot 插件数据目录，不应写入源码目录。 |
-| `list_page_size` | `int` | `30` | 查看问答列表时单次返回的问题数量，用于避免刷屏。 |
-| `command_prefix_required` | `bool` | `false` | 自然语言命令是否必须带 AstrBot 唤醒前缀。默认保持 XQA 原始体验，不要求前缀。 |
-| `permission_denied_notice` | `bool` | `true` | 权限不足时是否发送提示。关闭后静默忽略无权限操作。 |
+| `max_video_storage_mb` | `int` | `1024` | 视频目录普通文件总量上限；`0` 表示不限制，相同 SHA256 的视频复用已有文件。 |
+| `video_download_timeout_seconds` | `int` | `30` | 视频下载或转换超时时间。 |
+| `max_questions_per_user_per_group` | `int` | `100` | 单个用户在单个群内的个人问答数量上限。 |
+| `max_public_questions_per_group` | `int` | `300` | 单个群的公共问答数量上限。 |
+| `list_page_size` | `int` | `30` | 查看问答列表时单次显示数量。 |
+| `cooldown_seconds` | `int` | `0` | 同群触发冷却秒数；`0` 表示不启用冷却。 |
+| `storage_filename` | `string` | `xqa_data.json` | AstrBot 插件数据目录中的持久化数据文件名。 |
+| `enable_global_question` | `bool` | `false` | 预留配置；虽然已进入 schema，但当前全群问答命令尚未实现，此配置暂未生效。 |
+| `permission_denied_notice` | `bool` | `true` | 权限不足时是否发送提示。 |
+
+### 9.2 规划配置
+
+以下配置属于规划项，当前未进入 `_conf_schema.json` 或尚未生效，不应视为已实现能力：
+
+| 配置项 | 规划默认值 | 规划用途 |
+| --- | --- | --- |
+| `allow_group_admin_clear_questions` | `false` | 规划用于控制 QQ 群主/群管理员是否可清空本群问答。当前清空命令只返回暂未实现提示。 |
+| `match_timeout_ms` | `50` | 规划用于控制单条正则匹配的目标超时时间。 |
+| `quote_reply` | `false` | 规划用于控制自动回复时是否引用触发消息。 |
+| `enable_data_export` | `false` | 规划用于启用数据导出命令。 |
+| `enable_data_import` | `false` | 规划用于启用数据导入或重建命令。 |
+| `storage_backend` | `json` | 规划用于选择 `json`、`sqlite` 等存储后端。 |
+| `command_prefix_required` | `false` | 规划用于控制自然语言命令是否必须带 AstrBot 唤醒前缀。 |
 
 配置实现要求：
 
@@ -570,7 +551,7 @@ permission_denied_notice: true
 
 ### 11.4 数据安全
 
-- 清空、导入、重建等高危命令需限制到超级管理员。
+- 清空、导入、重建等高危命令需限制到 AstrBot 管理员或插件 `admin_users`。
 - 可考虑增加二次确认机制。
 
 ---

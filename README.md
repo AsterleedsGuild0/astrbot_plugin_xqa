@@ -83,6 +83,18 @@ Package AstrBot plugin (test)
 
 ---
 
+## 开发验证
+
+使用 Python 标准库运行单元测试：
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+当前共 27 项 unittest，覆盖群级启停、权限矩阵、媒体路径安全和视频存储限制；不宣称覆盖 `text.py` 中尚未纳入测试的正则函数。
+
+---
+
 ## 使用说明
 
 ### 设置个人问答
@@ -263,6 +275,7 @@ plugin_data/astrbot_plugin_xqa/videos/
 | `allow_group_admin_toggle_group_plugin` | `true` | 是否允许群管理员启停本群 XQA 插件 |
 | `allow_group_admin_manage_public_questions` | `true` | 是否允许 QQ 群主/群管理员管理公共问答 |
 | `enable_regex_question` | `true` | 是否启用正则问题 |
+| `enable_global_question` | `false` | 预留配置；当前全群问答尚未实现，修改此项不会启用相关命令 |
 | `enable_image_message` | `true` | 是否启用图片回答 |
 | `enable_video_message` | `true` | 是否启用视频回答 |
 | `persist_image_as_base64` | `true` | 是否尽量将图片持久化为 base64 |
@@ -289,7 +302,16 @@ plugin_data/astrbot_plugin_xqa/videos/
 
 ## 当前状态
 
-当前版本为 MVP 版，已实现核心问答能力与图片回答。
+当前版本为 `v0.1.2`，已实现：
+
+- 文本、图片和视频回答，其中图片支持文本 + 图片复合回答。
+- 回复 QQ 视频消息，或 `.mp4` / `.mov` / `.m4v` / `.webm` 文件，设置 video-only 回答。
+- 个人问答与本群公共问答两类作用域。
+- 完全匹配、正则匹配、捕获组回流和随机回答。
+- `XQA启用本群` / `XQA禁用本群` 群级总开关，以及本群个人问答开关。
+- AstrBot 管理员、插件 `admin_users`、QQ 群主/群管理员和普通成员的权限映射。
+- 媒体路径安全校验、单个视频大小限制和视频目录总量限制。
+- 27 项 unittest，覆盖群级启停、权限矩阵、媒体路径安全和视频存储限制。
 
 暂未实现：
 
@@ -299,6 +321,7 @@ plugin_data/astrbot_plugin_xqa/videos/
 - `全群问A你答B`。
 - `看看全群问A`。
 - `全群不要回答A`。
+- `XQA清空本群所有我问` / `XQA清空本群所有有人问`，当前只返回暂未实现提示，不属于正式管理功能。
 - 跨群复制问答。
 - 数据导入导出。
 - WebUI / Pages 管理。
