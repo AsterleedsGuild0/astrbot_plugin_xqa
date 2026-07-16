@@ -103,8 +103,6 @@
 | `XQA禁用我问` / `XQA启用我问` | 禁用或启用本群个人问答 |
 | `问答帮助` / `XQA帮助` | 查看插件帮助 |
 
-`全群问`、`看看全群问`、`全群不要回答` 和批量清空命令尚未实现。
-
 ---
 
 ## 管理权限
@@ -129,8 +127,6 @@
 | 限额 | `max_question_length`、`max_answer_length`、`max_answers_per_question`、`max_*_questions_*` | 限制内容长度、随机候选和问答数量 |
 | 视频限额 | `max_videos_per_answer`、`max_video_size_mb`、`max_video_storage_mb`、`video_download_timeout_seconds` | 限制视频数量、大小、总量和处理时间 |
 | 展示与存储 | `list_page_size`、`storage_filename` | 控制列表显示数量和数据文件名 |
-
-`enable_global_question` 是预留配置，当前不会启用全群问答功能。
 
 ---
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import re
 import shutil
 from pathlib import Path
 from typing import Any, TypeAlias
@@ -12,7 +11,7 @@ from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api.message_components import File, Image, Plain, Reply, Video
 
-from .text import split_answers
+from .text import SET_QUESTION_PATTERN, split_answers
 
 AnswerSegment: TypeAlias = dict[str, str]
 AnswerChain: TypeAlias = list[AnswerSegment]
@@ -96,7 +95,7 @@ async def parse_set_command_from_event(
     )
     if before_text is None:
         return None
-    matched = re.match(r"^(全群|有人|我)问([\s\S]*)$", before_text)
+    matched = SET_QUESTION_PATTERN.match(before_text)
     if not matched:
         return None
     if not has_answer_content(answer_chain):

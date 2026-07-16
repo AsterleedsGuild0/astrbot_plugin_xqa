@@ -14,6 +14,7 @@
 ### 变更
 
 - 精简 README 与 PRD，明确用户文档、产品基线和功能规格的职责边界。
+- 收紧 MVP 用户可见命令面：移除全群问答预留配置说明，全群问答与批量清空字符串改按普通群消息处理（[#2]）。
 - Release workflow 改为复用 CHANGELOG 版本章节生成 GitHub Release 正文。
 - 插件发布包加入 PRD、FSD 与 CHANGELOG 文档。
 
@@ -63,3 +64,4 @@
 [v0.1.1]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/releases/tag/v0.1.0
 [#1]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/1
+[#2]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/2

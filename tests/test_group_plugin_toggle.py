@@ -104,6 +104,22 @@ class DisabledGroupManagementTests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(result, "本群已禁用 XQA。发送“XQA启用本群”可恢复。")
 
+    async def test_unimplemented_command_texts_are_silent(self):
+        plugin = self.make_plugin()
+
+        for message in (
+            "全群问A你答B",
+            "看看全群问",
+            "全群不要回答A",
+            "XQA清空本群所有我问",
+            "XQA清空本群所有有人问",
+        ):
+            with self.subTest(message=message):
+                result = await plugin._handle_management_message(
+                    Mock(), "group-1", "user-1", message
+                )
+                self.assertIsNone(result)
+
     async def test_enable_command_still_uses_toggle_logic(self):
         plugin = self.make_plugin()
         event = Mock()

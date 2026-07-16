@@ -3,9 +3,9 @@ from __future__ import annotations
 import re
 
 
-QUESTION_PATTERN = re.compile(r"^(全群|有人|我)问([\s\S]*)你答([\s\S]*)$")
-SHOW_PATTERN = re.compile(r"^看看(有人|我|全群)问([\s\S]*)$")
-DELETE_PATTERN = re.compile(r"^(?:@([0-9]+)\s*)?(全群)?不要回答([\s\S]*)$")
+SET_QUESTION_PATTERN = re.compile(r"^(有人|我)问([\s\S]*)$")
+SHOW_PATTERN = re.compile(r"^看看(有人|我)问([\s\S]*)$")
+DELETE_PATTERN = re.compile(r"^(?:@([0-9]+)\s*)?不要回答([\s\S]*)$")
 
 
 def split_answers(raw: str, limit: int) -> list[str]:

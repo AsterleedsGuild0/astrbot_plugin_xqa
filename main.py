@@ -22,6 +22,7 @@ from .core.message_codec import (
 from .core.store import XQAStore
 from .core.text import (
     DELETE_PATTERN,
+    SET_QUESTION_PATTERN,
     SHOW_PATTERN,
     is_empty_or_broad_regex,
     looks_dangerous_regex,
@@ -100,9 +101,6 @@ class XQAPlugin(Star):
             return await self._toggle_self_question(
                 event, group_id, message.endswith("启用我问")
             )
-        if message == "XQA清空本群所有我问" or message == "XQA清空本群所有有人问":
-            return "暂未实现清空命令。请先使用“不要回答A”逐条删除。"
-
         if self.config.get("enable_processing_feedback", True) and (
             has_image_after_answer_delimiter(event) or has_replied_video_answer(event)
         ):
@@ -138,9 +136,9 @@ class XQAPlugin(Star):
 
         delete_match = DELETE_PATTERN.match(message)
         if delete_match:
-            at_user_id, is_global, question = delete_match.groups()
+            at_user_id, question = delete_match.groups()
             return await self._delete_question(
-                event, group_id, user_id, (at_user_id, is_global, question)
+                event, group_id, user_id, (at_user_id, question)
             )
 
         return None
@@ -221,11 +219,6 @@ class XQAPlugin(Star):
             await self.store.set_question(group_id, None, question, answers)
             return "好的我记住了。"
 
-        if question_type == "全群":
-            if not self.config.get("enable_global_question", False):
-                return "全群问功能当前未启用。"
-            return "暂未实现全群问写入。"
-
         return "未知问答类型。"
 
     async def _show_questions(
@@ -244,7 +237,7 @@ class XQAPlugin(Star):
             questions = self.store.list_questions(group_id, None, search)
             title = "本群公共问题"
         else:
-            return "看看全群问暂未实现。"
+            return "未知问答类型。"
 
         if not questions:
             return f"没有找到相关{title}。"
@@ -263,16 +256,12 @@ class XQAPlugin(Star):
         event: AstrMessageEvent,
         group_id: str,
         user_id: str,
-        groups: tuple[str | None, str | None, str],
+        groups: tuple[str | None, str],
     ) -> str:
-        at_user_id, is_global, question = groups
+        at_user_id, question = groups
         question = question.strip()
         if not question:
             return "删除问答请带上删除内容。"
-        if is_global:
-            if not self.config.get("enable_global_question", False):
-                return "全群不要回答功能当前未启用。"
-            return "暂未实现全群删除。"
         if at_user_id:
             if not await self._is_plugin_admin(event):
                 return self._permission_denied("删除他人问答仅限管理员。")
@@ -309,11 +298,17 @@ class XQAPlugin(Star):
         return "本群已启用 XQA。" if enabled else "本群已禁用 XQA。"
 
     def _is_xqa_command_like(self, message: str) -> bool:
-        if message.startswith(("XQA", "xqa")):
+        if message in {
+            "XQA禁用本群",
+            "XQA启用本群",
+            "XQA禁用我问",
+            "XQA启用我问",
+        }:
             return True
         if SHOW_PATTERN.match(message) or DELETE_PATTERN.match(message):
             return True
-        return "你答" in message and message.startswith(("我问", "有人问", "全群问"))
+        before_answer, delimiter, _ = message.partition("你答")
+        return bool(delimiter and SET_QUESTION_PATTERN.match(before_answer))
 
     async def _can_toggle_group_plugin(self, event: AstrMessageEvent) -> bool:
         if await self._is_plugin_admin(event):

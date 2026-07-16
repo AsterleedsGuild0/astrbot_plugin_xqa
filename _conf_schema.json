@@ -158,12 +158,6 @@
     "type": "string",
     "default": "xqa_data.json"
   },
-  "enable_global_question": {
-    "description": "启用全群问答命令",
-    "type": "bool",
-    "default": false,
-    "hint": "MVP 暂未实现全群写入，保留配置项。"
-  },
   "permission_denied_notice": {
     "description": "权限不足时发送提示",
     "type": "bool",
