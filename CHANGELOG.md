@@ -6,17 +6,21 @@
 
 ## [Unreleased]
 
+## [v0.1.3] - 2026-07-16
+
 ### 新增
 
-- 新增 `FSD.md`，固化 `v0.1.2` MVP 功能行为规格与后续 Issue/FSD 演进约定。
-- 新增 Changelog 生成与版本章节提取脚本，并补充对应单元测试。
+- 收口未实现的全群问答、批量清空命令及 WebUI 配置，只保留真实可用的 MVP 发布面（[#2]）。
+- 补充文本处理、公共问答权限与命令发布面测试，单元测试总数提升至 66 项。
+- 新增 MVP `FSD.md`、`CHANGELOG.md` 及 Changelog 生成/提取工具，建立文档生命周期边界。
 
-### 变更
+### 修复
 
-- 精简 README 与 PRD，明确用户文档、产品基线和功能规格的职责边界。
-- 收紧 MVP 用户可见命令面：移除全群问答预留配置说明，全群问答与批量清空字符串改按普通群消息处理（[#2]）。
-- Release workflow 改为复用 CHANGELOG 版本章节生成 GitHub Release 正文。
-- 插件发布包加入 PRD、FSD 与 CHANGELOG 文档。
+- 修复 `generate --write` 发布版本后未清空 `[Unreleased]` 正文的问题。
+
+### 文档
+
+- 精简 README 与 PRD，并同步 `v0.1.3` MVP 功能和配置边界。
 
 ## [v0.1.2] - 2026-07-15
 
@@ -59,7 +63,8 @@
 
 - 添加本地插件打包测试工具与仓库基础文件。
 
-[Unreleased]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.3...HEAD
+[v0.1.3]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/releases/tag/v0.1.0
