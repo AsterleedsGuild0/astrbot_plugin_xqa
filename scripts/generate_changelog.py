@@ -145,6 +145,23 @@ def find_section(text: str, version: str) -> tuple[int, int, str]:
     raise ValueError(f"Changelog section {version!r} was not found")
 
 
+def append_referenced_link_definitions(text: str, body: str) -> str:
+    """Append link definitions referenced by an extracted section."""
+    definitions: list[str] = []
+    for match in LINK_DEFINITION_PATTERN.finditer(text):
+        label = re.escape(match.group("label"))
+        reference = re.compile(
+            rf"(?<!\!)\[{label}\](?:\[\]|(?![\[(]))",
+            re.IGNORECASE,
+        )
+        if reference.search(body):
+            definitions.append(match.group(0))
+    if not definitions:
+        return body
+    definition_block = "\n".join(definitions)
+    return f"{body}\n\n{definition_block}"
+
+
 def write_section(
     changelog_path: Path,
     version: str,
@@ -227,6 +244,7 @@ def command_generate(args: argparse.Namespace) -> int:
 def command_extract(args: argparse.Namespace) -> int:
     text = args.changelog.read_text(encoding="utf-8")
     _start, _end, body = find_section(text, args.version)
+    body = append_referenced_link_definitions(text, body)
     output = body + "\n"
     if args.output:
         args.output.write_text(output, encoding="utf-8")

@@ -223,6 +223,59 @@ class GenerateChangelogTests(unittest.TestCase):
         _start, _end, body = changelog.find_section(text, "v0.1.0")
         self.assertEqual(body, "- 首发")
 
+    def test_extract_appends_only_referenced_link_definitions(self) -> None:
+        text = (
+            "## [v0.1.3] - 2026-07-16\n\n- 修复问题 [#2]\n\n"
+            "[#1]: https://example.test/issues/1\n"
+            "[#2]: https://example.test/issues/2\n"
+            "[v0.1.3]: https://example.test/releases/v0.1.3\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            changelog_path = Path(directory) / "CHANGELOG.md"
+            output_path = Path(directory) / "release.md"
+            changelog_path.write_text(text, encoding="utf-8")
+            self.assertEqual(
+                changelog.main(
+                    [
+                        "extract",
+                        "v0.1.3",
+                        "--changelog",
+                        str(changelog_path),
+                        "--output",
+                        str(output_path),
+                    ]
+                ),
+                0,
+            )
+            output = output_path.read_text(encoding="utf-8")
+
+        self.assertEqual(
+            output,
+            "- 修复问题 [#2]\n\n[#2]: https://example.test/issues/2\n",
+        )
+
+    def test_extract_without_reference_link_is_unchanged(self) -> None:
+        text = (
+            "## [v0.1.3] - 2026-07-16\n\n- 普通内容\n\n"
+            "[#2]: https://example.test/issues/2\n"
+        )
+        _start, _end, body = changelog.find_section(text, "v0.1.3")
+        self.assertEqual(
+            changelog.append_referenced_link_definitions(text, body), "- 普通内容"
+        )
+
+    def test_extract_inline_link_does_not_append_definition(self) -> None:
+        text = (
+            "## [v0.1.3] - 2026-07-16\n\n"
+            "- 查看 [#2](https://example.test/issues/2)\n\n"
+            "[#2]: https://example.test/issues/2\n"
+        )
+        _start, _end, body = changelog.find_section(text, "v0.1.3")
+        self.assertEqual(
+            changelog.append_referenced_link_definitions(text, body),
+            "- 查看 [#2](https://example.test/issues/2)",
+        )
+
     def test_extract_rejects_missing_and_empty_versions(self) -> None:
         with self.assertRaisesRegex(ValueError, "was not found"):
             changelog.find_section("## [v0.1.0]\n\n- 内容\n", "v9.9.9")
