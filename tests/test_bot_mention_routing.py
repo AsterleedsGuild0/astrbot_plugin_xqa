@@ -175,17 +175,40 @@ class MentionRoutingTests(unittest.IsolatedAsyncioTestCase):
     async def test_disabled_help_requires_current_mention(self):
         plugin = self.make_plugin(enabled=False)
         silent = await collect(plugin.xqa_help(event_for("XQA帮助")))
-        shown = await collect(
-            plugin.xqa_help(
-                event_for("XQA帮助", components=[At("bot-1"), Plain("XQA帮助")])
-            )
-        )
+        for alias in ("问答帮助", "XQA帮助", "xqa帮助"):
+            with self.subTest(alias=alias):
+                shown = await collect(
+                    plugin.xqa_help(
+                        event_for(alias, components=[At("bot-1"), Plain(alias)])
+                    )
+                )
+                self.assertEqual(shown, [plugin._disabled_help_text()])
+                self.assertIn("本群当前已禁用 XQA", shown[0])
+                self.assertIn("@Bot XQA启用本群", shown[0])
+                self.assertIn(plugin._help_text(), shown[0])
 
         self.assertEqual(silent, [])
-        self.assertEqual(shown, [plugin._help_text()])
-        self.assertIn("@Bot XQA禁用本群", shown[0])
-        self.assertIn("@Bot XQA启用本群", shown[0])
-        self.assertIn("必须真实 At 当前 Bot", shown[0])
+
+    async def test_disabled_help_mentioned_other_bot_is_silent(self):
+        plugin = self.make_plugin(enabled=False)
+        result = await collect(
+            plugin.xqa_help(
+                event_for("XQA帮助", components=[At("other-bot"), Plain("XQA帮助")])
+            )
+        )
+        self.assertEqual(result, [])
+
+    async def test_disabled_directed_help_has_only_one_observable_reply(self):
+        plugin = self.make_plugin(enabled=False)
+        event = event_for("XQA帮助", components=[At("bot-1"), Plain("XQA帮助")])
+
+        command_outputs = await collect(plugin.xqa_help(event))
+        group_outputs = await collect(plugin.on_group_message(event))
+
+        self.assertEqual(
+            command_outputs + group_outputs, [plugin._disabled_help_text()]
+        )
+        event.stop_event.assert_not_called()
 
     async def test_disabled_group_can_be_reenabled_when_current_bot_is_mentioned(self):
         plugin = self.make_plugin(enabled=False)
@@ -215,6 +238,7 @@ class MentionRoutingTests(unittest.IsolatedAsyncioTestCase):
         plugin = self.make_plugin(enabled=True)
         result = await collect(plugin.xqa_help(event_for("XQA帮助")))
         self.assertEqual(result, [plugin._help_text()])
+        self.assertNotIn("本群当前已禁用 XQA", result[0])
 
     async def test_only_target_bot_instance_handles_toggle(self):
         event_for_a = event_for(

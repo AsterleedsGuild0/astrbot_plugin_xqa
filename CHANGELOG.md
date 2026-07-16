@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 修复禁用群帮助缺少明确恢复提示，以及无效媒体样式消息错误触发处理反馈的问题（[#4]）。
+
 ## [v1.0.0] - 2026-07-16
 
 ### 新增
@@ -89,3 +93,4 @@
 [#1]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/1
 [#2]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/2
 [#3]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/3
+[#4]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/4

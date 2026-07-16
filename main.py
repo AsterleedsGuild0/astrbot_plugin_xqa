@@ -60,6 +60,8 @@ class XQAPlugin(Star):
         ):
             if not self._is_at_current_bot(event):
                 return
+            yield event.plain_result(self._disabled_help_text())
+            return
         yield event.plain_result(self._help_text())
 
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
@@ -116,8 +118,18 @@ class XQAPlugin(Star):
             return await self._toggle_self_question(
                 event, group_id, message.endswith("启用我问")
             )
-        if self.config.get("enable_processing_feedback", True) and (
-            has_image_after_answer_delimiter(event) or has_replied_video_answer(event)
+
+        before_answer, answer_delimiter, _ = message.partition("你答")
+        is_set_command = bool(
+            answer_delimiter and SET_QUESTION_PATTERN.match(before_answer)
+        )
+        if (
+            is_set_command
+            and self.config.get("enable_processing_feedback", True)
+            and (
+                has_image_after_answer_delimiter(event)
+                or has_replied_video_answer(event)
+            )
         ):
             await self._send_slow_media_save_ack(event)
 
@@ -623,3 +635,10 @@ class XQAPlugin(Star):
 - 支持 # 分隔随机回答，\\# 表示普通井号
 - 支持图片回答；视频回答请先发视频，再回复视频发送“我问A你答”或“有人问A你答”
 """.strip()
+
+    def _disabled_help_text(self) -> str:
+        return (
+            "本群当前已禁用 XQA。\n"
+            "请由管理员发送“@Bot XQA启用本群”（必须真实 At 当前 Bot）恢复。\n\n"
+            f"{self._help_text()}"
+        )
