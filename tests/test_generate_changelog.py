@@ -276,6 +276,38 @@ class GenerateChangelogTests(unittest.TestCase):
             "- 查看 [#2](https://example.test/issues/2)",
         )
 
+    def test_extract_code_references_do_not_append_definitions(self) -> None:
+        text = (
+            "## [v0.1.3] - 2026-07-16\n\n"
+            "- 中文行内代码 `` `[Unreleased]` `` 和 `[#2]` 不算引用。\n\n"
+            "```markdown\n"
+            "[#2]\n"
+            "[Unreleased]\n"
+            "```\n\n"
+            "[Unreleased]: https://example.test/compare/v0.1.3...HEAD\n"
+            "[#2]: https://example.test/issues/2\n"
+        )
+        _start, _end, body = changelog.find_section(text, "v0.1.3")
+        self.assertEqual(changelog.append_referenced_link_definitions(text, body), body)
+
+    def test_extract_mixed_code_and_real_reference_appends_only_real_one(self) -> None:
+        text = (
+            "## [v0.1.3] - 2026-07-16\n\n"
+            "- 保留反引号 `值`，忽略 `` `[Unreleased]` ``。\n"
+            "- 图片 ![Unreleased][Unreleased] 不算正文引用。\n"
+            "- 真实问题引用 [#2]。\n\n"
+            "~~~text\n"
+            "[#2]\n"
+            "~~~\n\n"
+            "[Unreleased]: https://example.test/compare/v0.1.3...HEAD\n"
+            "[#2]: https://example.test/issues/2\n"
+        )
+        _start, _end, body = changelog.find_section(text, "v0.1.3")
+        self.assertEqual(
+            changelog.append_referenced_link_definitions(text, body),
+            f"{body}\n\n[#2]: https://example.test/issues/2",
+        )
+
     def test_extract_rejects_missing_and_empty_versions(self) -> None:
         with self.assertRaisesRegex(ValueError, "was not found"):
             changelog.find_section("## [v0.1.0]\n\n- 内容\n", "v9.9.9")

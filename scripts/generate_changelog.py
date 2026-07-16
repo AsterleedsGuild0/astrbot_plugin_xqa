@@ -34,8 +34,10 @@ HEADING_PATTERN = re.compile(
 )
 LINK_REFERENCE_PATTERN = re.compile(r"^\[[^]\n]+\]:\s+\S+", re.MULTILINE)
 LINK_DEFINITION_PATTERN = re.compile(
-    r"^\[(?P<label>[^]\n]+)\]:\s+(?P<url>\S+)\s*$", re.MULTILINE
+    r"^\[(?P<label>[^]\n]+)\]:[ \t]+(?P<url>\S+)[ \t]*$", re.MULTILINE
 )
+FENCE_OPEN_PATTERN = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
+IMAGE_PATTERN = re.compile(r"!\[[^]\n]*\](?:\([^\n)]*\)|\[[^]\n]*\])?")
 
 
 @dataclass(frozen=True)
@@ -145,8 +147,68 @@ def find_section(text: str, version: str) -> tuple[int, int, str]:
     raise ValueError(f"Changelog section {version!r} was not found")
 
 
+def mask_markdown_code(text: str) -> str:
+    """Mask fenced and inline code while preserving text positions and newlines."""
+
+    def mask(value: str) -> str:
+        return "".join(char if char in "\r\n" else " " for char in value)
+
+    fenced_parts: list[str] = []
+    fence_character: str | None = None
+    fence_length = 0
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        if fence_character is not None:
+            fenced_parts.append(mask(line))
+            closing_fence = re.fullmatch(
+                rf" {{0,3}}{re.escape(fence_character)}{{{fence_length},}}[ \t]*",
+                content,
+            )
+            if closing_fence:
+                fence_character = None
+                fence_length = 0
+            continue
+
+        opening_fence = FENCE_OPEN_PATTERN.match(content)
+        if opening_fence:
+            fence = opening_fence.group("fence")
+            fence_character = fence[0]
+            fence_length = len(fence)
+            fenced_parts.append(mask(line))
+        else:
+            fenced_parts.append(line)
+
+    masked_text = "".join(fenced_parts)
+    characters = list(masked_text)
+    backtick_runs = list(re.finditer(r"`+", masked_text))
+    run_index = 0
+    while run_index < len(backtick_runs):
+        opening_run = backtick_runs[run_index]
+        closing_index = next(
+            (
+                index
+                for index in range(run_index + 1, len(backtick_runs))
+                if len(backtick_runs[index].group(0)) == len(opening_run.group(0))
+            ),
+            None,
+        )
+        if closing_index is None:
+            run_index += 1
+            continue
+        closing_run = backtick_runs[closing_index]
+        for index in range(opening_run.start(), closing_run.end()):
+            if characters[index] not in "\r\n":
+                characters[index] = " "
+        run_index = closing_index + 1
+    return "".join(characters)
+
+
 def append_referenced_link_definitions(text: str, body: str) -> str:
     """Append link definitions referenced by an extracted section."""
+    reference_text = mask_markdown_code(body)
+    reference_text = IMAGE_PATTERN.sub(
+        lambda match: " " * len(match.group(0)), reference_text
+    )
     definitions: list[str] = []
     for match in LINK_DEFINITION_PATTERN.finditer(text):
         label = re.escape(match.group("label"))
@@ -154,7 +216,7 @@ def append_referenced_link_definitions(text: str, body: str) -> str:
             rf"(?<!\!)\[{label}\](?:\[\]|(?![\[(]))",
             re.IGNORECASE,
         )
-        if reference.search(body):
+        if reference.search(reference_text):
             definitions.append(match.group(0))
     if not definitions:
         return body
