@@ -13,6 +13,7 @@
 ### 修复
 
 - 修复禁用群帮助缺少明确恢复提示，以及无效媒体样式消息错误触发处理反馈的问题（[#4]）。
+- 修正个人问答默认开关的配置说明，并补充自定义存储文件名与无视频目录边界测试（[#6]）。
 
 ## [v1.0.0] - 2026-07-16
 
@@ -99,3 +100,4 @@
 [#3]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/3
 [#4]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/4
 [#5]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/5
+[#6]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/6

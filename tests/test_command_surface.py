@@ -118,6 +118,10 @@ class ConfigurationSurfaceTests(unittest.TestCase):
         schema = self.read_schema()
         self.assertFalse(schema["group_plugin_enabled_default"]["default"])
         self.assertTrue(schema["self_question_enabled_default"]["default"])
+        self.assertEqual(
+            schema["self_question_enabled_default"]["description"],
+            "启用群后个人问答的默认状态",
+        )
         self.assertIn("XQA启用本群", schema["group_plugin_enabled_default"]["hint"])
 
 

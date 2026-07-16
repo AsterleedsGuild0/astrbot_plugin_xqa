@@ -1,6 +1,6 @@
 {
   "self_question_enabled_default": {
-    "description": "新群默认启用个人问答",
+    "description": "启用群后个人问答的默认状态",
     "type": "bool",
     "default": true,
     "hint": "关闭后默认不匹配或设置“我问A你答B”。"

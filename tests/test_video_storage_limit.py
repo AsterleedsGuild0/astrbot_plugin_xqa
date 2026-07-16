@@ -6,8 +6,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
 
-from astrbot_stubs import LOGGER
+from astrbot_stubs import LOGGER, Plain, Reply, Video
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 MESSAGE_CODEC = importlib.import_module("astrbot_plugin_xqa.core.message_codec")
@@ -81,6 +82,32 @@ class VideoStorageLimitTests(unittest.TestCase):
         segment = self.persist(source, storage_limit_mb=1)
 
         self.assertTrue((self.root / segment["value"]).is_file())
+
+
+class VideoDirectoryBoundaryTests(unittest.IsolatedAsyncioTestCase):
+    async def test_reply_video_is_not_downloaded_when_video_dir_is_none(self):
+        video = Video("https://example.invalid/reply.mp4")
+        converter = AsyncMock(
+            side_effect=AssertionError("video download must not be attempted")
+        )
+        setattr(video, "convert_to_file_path", converter)
+        event = Mock()
+        event.get_messages.return_value = [Plain("我问A你答"), Reply([video])]
+        persister = AsyncMock(
+            side_effect=AssertionError("video persistence must not be attempted")
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.object(MESSAGE_CODEC, "_persist_video", new=persister):
+                result = await MESSAGE_CODEC.parse_set_command_from_event(
+                    event,
+                    video_dir=None,
+                )
+
+            self.assertEqual(result, ("我", "A", []))
+            self.assertEqual(list(Path(temp_dir).iterdir()), [])
+        converter.assert_not_awaited()
+        persister.assert_not_awaited()
 
 
 if __name__ == "__main__":
