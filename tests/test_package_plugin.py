@@ -17,7 +17,7 @@ class PackagePluginTests(unittest.TestCase):
                 names = set(archive.namelist())
 
         plugin_name = package_plugin.read_plugin_name()
-        for document in ("PRD.md", "FSD.md", "CHANGELOG.md"):
+        for document in ("PRD.md", "FSD.md", "DESIGN.md", "CHANGELOG.md"):
             with self.subTest(document=document):
                 self.assertIn(f"{plugin_name}/{document}", names)
 

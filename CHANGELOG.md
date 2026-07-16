@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 文档
+
+- 新增面向维护者的 `DESIGN.md`，记录 v1.0.0 实现结构、数据与媒体边界、已知限制和测试索引，并纳入发布包；同步明确 At 只提供当前 Bot 的消息目标与路由隔离，不提供 Bot / platform 数据或状态隔离（[#5]）。
+
 ### 修复
 
 - 修复禁用群帮助缺少明确恢复提示，以及无效媒体样式消息错误触发处理反馈的问题（[#4]）。
@@ -19,7 +23,7 @@
 ### 变更
 
 - 出于安全考虑，新群 XQA 默认关闭，需要管理员显式启用。
-- 群级启停必须明确 @ 当前 Bot；禁用群中未 @ 当前 Bot 的消息保持静默，并提供帮助恢复入口和多 Bot 隔离行为（[#3]）。
+- 群级启停必须明确 @ 当前 Bot；禁用群中未 @ 当前 Bot 的消息保持静默，并提供帮助恢复入口和多 Bot 消息目标 / 路由隔离行为，不承诺 Bot / platform 数据或状态隔离（[#3]）。
 
 ### 修复
 
@@ -94,3 +98,4 @@
 [#2]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/2
 [#3]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/3
 [#4]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/4
+[#5]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/5

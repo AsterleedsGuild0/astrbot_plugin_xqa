@@ -27,6 +27,7 @@ PACKAGE_ROOT_FILES = [
     "README.md",
     "PRD.md",
     "FSD.md",
+    "DESIGN.md",
     "CHANGELOG.md",
     "LICENSE",
     "logo.png",

@@ -101,7 +101,7 @@
 | `看看有人问` / `看看有人问X` | 查看或搜索本群公共问题 |
 | `不要回答A` | 优先删除自己的个人问答；管理员可据此删除公共问答 |
 | `@用户 不要回答A` | 插件管理员删除指定成员的个人问答；实际识别依赖平台提供用户 ID |
-| `@Bot XQA禁用本群` / `@Bot XQA启用本群` | 明确 @ 当前 Bot 后，禁用或启用本群全部 XQA 功能 |
+| `@Bot XQA禁用本群` / `@Bot XQA启用本群` | 明确 @ 当前 Bot 后切换本群总开关；禁用时仍保留定向帮助、禁用提示和恢复命令 |
 | `XQA禁用我问` / `XQA启用我问` | 禁用或启用本群个人问答 |
 | `问答帮助` / `XQA帮助` | 查看插件帮助 |
 
@@ -110,11 +110,12 @@
 ## 群开关与多 Bot 场景
 
 - 群级总开关只接受明确 @ 当前 Bot 的 `@Bot XQA启用本群` 和 `@Bot XQA禁用本群`。
-- 不带 At、At 其他用户或 Bot、At 全体成员时，当前 Bot 对上述群开关命令保持静默且不修改状态。
+- 不带 At、At 其他用户或 Bot、At 全体成员时，当前 Bot 对上述群开关命令保持静默且不执行本次写操作。
 - 本群 XQA 禁用后，未 @ 当前 Bot 的普通消息及 XQA 管理命令均静默处理。
 - 禁用期间明确 @ 当前 Bot 时，启用命令可恢复本群 XQA；其他受支持的管理命令可返回禁用提示，`@Bot XQA帮助` 可显示帮助和恢复说明。
 - 本群启用后，设置、查看、删除及个人问答开关等其他命令无需 @ 当前 Bot，自动问答行为也保持不变。
-- 同一群存在多个 Bot 时，应 @ 需要操作的具体 Bot；只有被明确 At 的当前 Bot 可以修改自己的群级总开关，避免一个命令同时改变多个 Bot 的状态。
+- 同一群存在多个 Bot 时，应 @ 需要操作的具体 Bot；At 约束只隔离本次群级总开关命令的消息目标和处理路由，非目标 Bot 不回复、也不执行本次写操作。
+- 插件不提供 Bot、platform 或 AstrBot 实例维度的数据与状态隔离；多个 Bot 或实例共享同一插件数据目录和 `storage_filename` 时，会读写同一份问答与群开关状态。
 
 ---
 
@@ -165,7 +166,7 @@
 python -m unittest discover -s tests -v
 ```
 
-版本变化见 [`CHANGELOG.md`](CHANGELOG.md)；发布自动化见 [GitHub Actions](https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/blob/main/.github/workflows/release.yml)。
+版本变化见 [`CHANGELOG.md`](CHANGELOG.md)；维护者可通过 [`DESIGN.md`](DESIGN.md) 了解实现结构与技术边界；发布自动化见 [GitHub Actions](https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/blob/main/.github/workflows/release.yml)。
 
 ---
 
@@ -173,6 +174,7 @@ python -m unittest discover -s tests -v
 
 - [产品基线 PRD](PRD.md)
 - [MVP 功能行为规格 FSD](FSD.md)
+- [实现设计与技术边界 DESIGN](DESIGN.md)
 - [版本变化 CHANGELOG](CHANGELOG.md)
 - [配置权威定义](./_conf_schema.json)
 
