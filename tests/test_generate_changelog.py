@@ -71,6 +71,11 @@ class GenerateChangelogTests(unittest.TestCase):
             updated = path.read_text(encoding="utf-8")
         self.assertLess(updated.index("## [Unreleased]"), updated.index("## [v0.2.0]"))
         self.assertLess(updated.index("## [v0.2.0]"), updated.index("## [v0.1.0]"))
+        self.assertIn("## [Unreleased]\n\n## [v0.2.0]", updated)
+        self.assertNotIn("### 变更", updated)
+        self.assertNotIn("- 草稿", updated)
+        self.assertIn("### 新增\n\n- 新功能", updated)
+        self.assertIn("## [v0.1.0] - 2026-01-01\n\n- 首发", updated)
         self.assertIn(
             "[Unreleased]: https://example.test/project/compare/v0.2.0...HEAD",
             updated,
@@ -106,6 +111,36 @@ class GenerateChangelogTests(unittest.TestCase):
             "[v0.2.0]: https://example.test/project/releases/tag/v0.2.0", updated
         )
         self.assertLess(updated.index("## [v0.2.0]"), updated.index("[Unreleased]:"))
+        self.assertNotIn("- 草稿", updated)
+
+    def test_write_handles_empty_unreleased_section(self) -> None:
+        original = (
+            "# 更新日志\n\n## [Unreleased]\n\n"
+            "## [v0.1.0] - 2026-01-01\n\n- 首发\n\n"
+            "[Unreleased]: https://example.test/project/compare/v0.1.0...HEAD\n"
+            "[v0.1.0]: https://example.test/project/releases/tag/v0.1.0\n"
+        )
+        section = "## [v0.2.0] - 2026-02-01\n\n### 修复\n\n- 修复问题\n"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "CHANGELOG.md"
+            path.write_text(original, encoding="utf-8")
+            changelog.write_section(path, "v0.2.0", section, "v0.1.0")
+            updated = path.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "## [Unreleased]\n\n## [v0.2.0] - 2026-02-01\n\n"
+            "### 修复\n\n- 修复问题\n\n"
+            "## [v0.1.0] - 2026-01-01\n\n- 首发",
+            updated,
+        )
+        self.assertIn(
+            "[Unreleased]: https://example.test/project/compare/v0.2.0...HEAD",
+            updated,
+        )
+        self.assertIn(
+            "[v0.2.0]: https://example.test/project/compare/v0.1.0...v0.2.0",
+            updated,
+        )
 
     def test_unknown_commit_is_kept_in_other_category(self) -> None:
         section = changelog.generate_section(

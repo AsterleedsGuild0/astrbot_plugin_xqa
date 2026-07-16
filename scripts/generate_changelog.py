@@ -28,7 +28,8 @@ CATEGORY_ORDER = (
 )
 ISSUE_PATTERN = re.compile(r"(?<![\w/])#(\d+)\b")
 HEADING_PATTERN = re.compile(
-    r"^##\s+(?:\[(?P<bracketed>[^]\n]+)\]|(?P<plain>\S+))(?:\s+-\s+[^\n]+)?\s*$",
+    r"^##[ \t]+(?:\[(?P<bracketed>[^]\n]+)\]|(?P<plain>\S+))"
+    r"(?:[ \t]+-[ \t]+[^\n]+)?[ \t]*$",
     re.MULTILINE,
 )
 LINK_REFERENCE_PATTERN = re.compile(r"^\[[^]\n]+\]:\s+\S+", re.MULTILINE)
@@ -203,7 +204,7 @@ def write_section(
         else:
             link_references = LINK_REFERENCE_PATTERN.search(text, match.end())
             insert_at = link_references.start() if link_references else len(text)
-        before = text[:insert_at].rstrip()
+        before = text[: match.end()].rstrip()
         after = text[insert_at:].lstrip()
         updated = f"{before}\n\n{section.strip()}\n\n{after}"
         changelog_path.write_text(updated.rstrip() + "\n", encoding="utf-8")
