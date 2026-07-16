@@ -71,8 +71,14 @@ jobs:
             exit 1
           fi
 
+      - name: Extract release notes
+        run: >-
+          python scripts/generate_changelog.py extract
+          "${{ steps.version.outputs.version }}"
+          --output release-notes.md
+
       - name: Lint packaging script
-        run: python -m ruff check scripts/package_plugin.py
+        run: python -m ruff check scripts/package_plugin.py scripts/generate_changelog.py
 
       - name: Build plugin package
         run: python scripts/package_plugin.py --package-version "${{ steps.version.outputs.version }}"
@@ -97,6 +103,6 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: astrbot_plugin_xqa ${{ steps.version.outputs.version }}
+          body_path: release-notes.md
           files: ${{ steps.package.outputs.path }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || contains(steps.version.outputs.version, '-') }}
-          generate_release_notes: true

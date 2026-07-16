@@ -1,385 +1,183 @@
 # astrbot_plugin_xqa
 
-一个面向 AstrBot 的 XQA 风格“你问我答”插件，支持在群聊中使用自然语言设置问答：
+一个面向 AstrBot 的 XQA 风格群聊问答插件。群成员可以用自然语言设置个人问答，管理员可以设置本群公共问答；后续消息命中问题时，Bot 自动回复保存的答案。
 
 ```text
 我问A你答B
 有人问A你答B
 ```
 
-后续群内成员发送问题 A 时，Bot 自动回复答案 B。
+当前版本：`v0.1.2`。
 
 ---
 
-## ⚠️ 注意
+## 安装
 
-- 请谨慎在同一个群里同时启用多个自动问答类 Bot，避免被恶意正则或互相触发导致刷屏。
-- 当前版本支持文本回答、图片回答、文本与图片复合回答、引用视频作为回答；语音、跨群复制、数据导入导出等能力暂未进入 MVP。
-- 正则问答默认开启，但插件会拒绝明显空匹配、泛匹配和部分危险正则。
+软件要求：
 
----
+- AstrBot `>= 4.11.2`
+- Python 跟随 AstrBot 运行环境
+- 无额外第三方依赖
 
-## 功能特性
-
-- 支持 `我问A你答B` 设置个人问答。
-- 支持 `有人问A你答B` 设置本群公共问答。
-- 支持完全匹配优先、正则匹配后备。
-- 支持 `$1`、`$2` 等正则捕获组回流。
-- 支持使用 `#` 分隔随机回答，使用 `\#` 表示普通井号。
-- 支持图片回答，以及文本 + 图片复合回答。
-- 支持回复视频消息或 mp4 等视频文件设置视频回答，并将视频保存到插件数据目录。
-- 保存图片回答较慢时，会优先给原消息添加 QQ 表情回应，提示用户 Bot 正在处理。
-- 支持查看、搜索、删除问答。
-- 支持群级启用 / 禁用个人问答。
-- 使用 AstrBot 插件数据目录持久化保存问答数据。
+当前插件尚未发布到 AstrBot 插件市场。可将仓库放入 AstrBot 插件目录，或在 AstrBot WebUI 的插件管理页面上传插件 zip。运行数据会写入 AstrBot 插件数据目录，请勿将运行时数据提交到源码仓库。
 
 ---
 
-## 软件要求
+## 核心特性
 
-- AstrBot：`>= 4.11.2`
-- Python：跟随 AstrBot 运行环境
-- 第三方依赖：当前版本无额外依赖
-
----
-
-## 安装与本地测试
-
-当前插件尚未发布到 AstrBot 插件市场，因此暂不提供“插件市场搜索安装”的说明。
-
-### 本地开发源
-
-本仓库作为开发源时，建议放在工作区插件源码目录：
-
-```text
-Plugins/astrbot_plugin_xqa
-```
-
-不要直接把运行时生成的数据提交到源码仓库。插件运行数据会写入 AstrBot 的插件数据目录。
-
-### 打包测试
-
-仓库提供本地测试打包脚本：
-
-```bash
-python scripts/package_plugin.py --dev-version
-```
-
-生成的测试包位于：
-
-```text
-dist/astrbot_plugin_xqa-<version>.zip
-```
-
-可在 AstrBot WebUI 的插件管理页面中上传该 zip 包进行本地安装测试。
-
-如果你使用 VS Code，也可以直接运行 `.vscode/launch.json` 中的：
-
-```text
-Package AstrBot plugin (test)
-```
-
-该配置会调用同一个打包脚本生成带时间戳的测试版本包，不会修改工作区中的 `metadata.yaml`。
+- 个人问答：`我问A你答B`，仅设置者本人可触发。
+- 公共问答：`有人问A你答B`，本群成员均可触发。
+- 完全匹配优先，正则表达式匹配作为后备。
+- 回答支持 `$1`、`$2` 等正则捕获组回流。
+- 纯文本回答支持用 `#` 分隔随机候选，用 `\#` 表示普通井号。
+- 支持图片回答及文本与图片复合回答。
+- 支持通过回复视频消息或视频文件设置 video-only 回答。
+- 支持查看、搜索、删除问答，以及群级总开关和个人问答开关。
+- 问答和群开关持久化保存，插件重启后继续生效。
 
 ---
 
-## 开发验证
+## 使用示例
 
-使用 Python 标准库运行单元测试：
-
-```bash
-python -m unittest discover -s tests -v
-```
-
-当前共 27 项 unittest，覆盖群级启停、权限矩阵、媒体路径安全和视频存储限制；不宣称覆盖 `text.py` 中尚未纳入测试的正则函数。
-
----
-
-## 使用说明
-
-### 设置个人问答
-
-普通群成员可使用：
-
-```text
-我问A你答B
-```
-
-示例：
+### 个人问答
 
 ```text
 我问菜单你答今天吃黄焖鸡
 ```
 
-之后同一用户在同一群发送：
+同一用户在同一群发送 `菜单` 后，Bot 回复 `今天吃黄焖鸡`；其他用户不会触发这条个人问答。
 
-```text
-菜单
-```
-
-Bot 回复：
-
-```text
-今天吃黄焖鸡
-```
-
-个人问答仅对设置者本人触发生效。
-
-### 设置公共问答
-
-管理员可使用：
-
-```text
-有人问A你答B
-```
-
-示例：
+### 公共问答
 
 ```text
 有人问群规你答禁止刷屏，禁止攻击他人
 ```
 
-之后本群任意成员发送：
+设置成功后，本群任意成员发送 `群规` 均可触发。设置公共问答需要相应管理权限。
 
-```text
-群规
-```
-
-Bot 回复：
-
-```text
-禁止刷屏，禁止攻击他人
-```
-
-### 正则与回流
-
-问题可以作为正则表达式匹配。回答中可以使用 `$1`、`$2` 等回流参数。
-
-示例：
+### 正则、回流与随机回答
 
 ```text
 我问你好(.*)你答你也好$1
-```
-
-发送：
-
-```text
-你好呀
-```
-
-Bot 回复：
-
-```text
-你也好呀
-```
-
-### 随机回答
-
-回答可以用 `#` 分隔为多个候选项，触发时随机回复其中一个。
-
-示例：
-
-```text
 有人问吃什么你答火锅#烧烤#黄焖鸡
+我问井号你答A\#B
 ```
 
-如果回答里需要普通井号，请写成 `\#`。
+- 发送 `你好呀` 可得到 `你也好呀`。
+- 多次触发 `吃什么` 时，会随机返回一个候选答案。
+- 触发 `井号` 时回复 `A#B`。
 
-### 图片与复合回答
+### 图片回答
 
-可以在 `你答` 后直接发送图片，或发送文本 + 图片组合。
-
-示例：
-
-```text
-有人问极限空间你答 [图片]
-```
-
-也可以发送：
+在 `你答` 后直接附带图片，可保存纯图片或文本与图片复合回答：
 
 ```text
 有人问攻略你答先看这张图：[图片]
 ```
 
-当前版本会尽量将图片转为 base64 保存，降低平台临时图片 URL 过期风险。
-
-保存图片时可能需要下载并转换图片。插件会先尝试给原消息添加 QQ 表情回应；如果平台不支持，则发送“正在保存图片回答，请稍候…”文本提示。
+插件会按配置尽量持久化图片。保存较慢时，可能先发送 QQ 表情回应或处理提示。
 
 ### 视频回答
 
-QQ 平台通常不稳定支持一条消息同时包含文字和视频。因此视频回答采用“回复视频消息设置问答”的方式。
-
-先发送一条视频消息，或以文件方式发送 `.mp4` / `.mov` / `.m4v` / `.webm` 视频文件，然后回复这条消息：
+先发送视频消息，或以文件形式发送 `.mp4`、`.mov`、`.m4v`、`.webm`，再回复该消息：
 
 ```text
 有人问意志图鉴你答
 ```
 
-或：
-
-```text
-我问意志图鉴你答
-```
-
-插件会从被回复消息中提取视频；如果引用的是视频文件，会按文件名或 URL 后缀识别并下载保存到插件数据目录：
-
-```text
-plugin_data/astrbot_plugin_xqa/videos/
-```
-
-后续触发问题时，插件使用本地视频文件回复。
-
-当前限制：视频回答首版只支持 video-only，不支持“文字 + 视频”同条回答。
-
-单个视频默认限制为 50 MB；视频目录默认总量限制为 1024 MB。写入新视频前会统计目录内普通文件的总大小，达到上限时提示清理旧视频或调整配置。相同 SHA256 的视频会复用已有文件，不会重复占用容量；将 `max_video_storage_mb` 设为 `0` 可关闭总量限制。
+也可使用 `我问意志图鉴你答` 设置个人视频回答。视频回答当前仅支持 video-only，不支持文字与视频混合。
 
 ---
 
-## 功能菜单
-
-### 一般功能
+## 命令表
 
 | 命令 | 说明 |
 | --- | --- |
-| `我问A你答B` | 设置个人问答 |
-| `有人问A你答B` | 管理员设置本群公共问答 |
-| `看看我问` | 查看自己在本群设置的个人问答 |
-| `看看我问X` | 搜索自己在本群设置的个人问答 |
-| `看看有人问` | 查看本群公共问答 |
-| `看看有人问X` | 搜索本群公共问答 |
-| `不要回答A` | 删除自己的个人问答；管理员也可删除公共问答 |
-| `问答帮助` | 查看插件帮助 |
-| `XQA帮助` | 查看插件帮助 |
+| `我问A你答B` | 设置或覆盖自己的个人问答 |
+| `有人问A你答B` | 设置或覆盖本群公共问答 |
+| `看看我问` / `看看我问X` | 查看或搜索自己的个人问题 |
+| `看看有人问` / `看看有人问X` | 查看或搜索本群公共问题 |
+| `不要回答A` | 优先删除自己的个人问答；管理员可据此删除公共问答 |
+| `@用户 不要回答A` | 插件管理员删除指定成员的个人问答；实际识别依赖平台提供用户 ID |
+| `XQA禁用本群` / `XQA启用本群` | 禁用或启用本群全部 XQA 功能 |
+| `XQA禁用我问` / `XQA启用我问` | 禁用或启用本群个人问答 |
+| `问答帮助` / `XQA帮助` | 查看插件帮助 |
 
-### 管理功能
-
-| 命令 | 说明 |
-| --- | --- |
-| `XQA禁用本群` | 禁用本群全部 XQA 问答功能 |
-| `XQA启用本群` | 启用本群全部 XQA 问答功能 |
-| `XQA禁用我问` | 禁用本群个人问答 |
-| `XQA启用我问` | 启用本群个人问答 |
+`全群问`、`看看全群问`、`全群不要回答` 和批量清空命令尚未实现。
 
 ---
 
-## 配置说明
+## 管理权限
 
-插件配置通过 AstrBot 插件配置界面管理，主要配置项包括：
+- 普通成员可管理自己的个人问答，并可查看本群公共问题。
+- QQ 群主、群管理员是否可设置公共问答和操作群级开关，由相应配置控制；当前可删除本群公共问答。
+- AstrBot 管理员和 `admin_users` 中的插件管理员可管理公共问答、删除指定成员问答并操作群级开关。
+- `permission_denied_notice` 关闭后，部分权限不足场景会静默处理。
 
-| 配置项 | 默认值 | 说明 |
+---
+
+## 配置摘要
+
+插件配置通过 AstrBot 插件配置界面管理。默认值及字段定义以 [`_conf_schema.json`](_conf_schema.json) 为准。
+
+| 功能组 | 主要配置 | 用途 |
 | --- | --- | --- |
-| `self_question_enabled_default` | `true` | 新群默认是否启用个人问答 |
-| `admin_users` | `[]` | 插件管理员用户 ID 列表 |
-| `allow_group_admin_toggle_self_question` | `false` | 是否允许 QQ 群主/群管理员启停本群个人问答；AstrBot 管理员/插件管理员始终允许 |
-| `group_plugin_enabled_default` | `true` | 新群默认是否启用 XQA 插件 |
-| `allow_group_admin_toggle_group_plugin` | `true` | 是否允许群管理员启停本群 XQA 插件 |
-| `allow_group_admin_manage_public_questions` | `true` | 是否允许 QQ 群主/群管理员管理公共问答 |
-| `enable_regex_question` | `true` | 是否启用正则问题 |
-| `enable_global_question` | `false` | 预留配置；当前全群问答尚未实现，修改此项不会启用相关命令 |
-| `enable_image_message` | `true` | 是否启用图片回答 |
-| `enable_video_message` | `true` | 是否启用视频回答 |
-| `persist_image_as_base64` | `true` | 是否尽量将图片持久化为 base64 |
-| `enable_processing_feedback` | `true` | 保存图片回答时是否发送处理反馈 |
-| `processing_emoji_ids` | `["424", "66"]` | QQ 表情回应 ID 列表 |
-| `reject_empty_regex` | `true` | 是否拒绝空匹配 / 泛匹配问题 |
-| `reject_dangerous_regex` | `true` | 是否拒绝常见危险正则 |
-| `max_question_length` | `200` | 问题最大字符数 |
-| `max_answer_length` | `1000` | 回答最大字符数 |
-| `max_answers_per_question` | `20` | 单个问题的随机回答数量上限 |
-| `max_images_per_answer` | `5` | 单条回答图片数量上限 |
-| `max_videos_per_answer` | `1` | 单条回答视频数量上限 |
-| `max_video_size_mb` | `50` | 单个视频大小上限 |
-| `max_video_storage_mb` | `1024` | 视频目录存储总量上限（MB）；`0` 表示不限制，相同 SHA256 文件会复用 |
-| `video_download_timeout_seconds` | `30` | 视频下载/转换超时 |
-| `max_questions_per_user_per_group` | `100` | 单用户单群个人问答上限 |
-| `max_public_questions_per_group` | `300` | 单群公共问答上限 |
-| `list_page_size` | `30` | 查看问答时单次显示数量 |
-| `cooldown_seconds` | `0` | 同群触发冷却时间 |
-| `storage_filename` | `xqa_data.json` | 持久化数据文件名 |
-| `permission_denied_notice` | `true` | 权限不足时是否发送提示 |
+| 群开关 | `group_plugin_enabled_default`、`self_question_enabled_default` | 控制新群的 XQA 与个人问答默认状态 |
+| 权限 | `admin_users`、`allow_group_admin_*`、`permission_denied_notice` | 配置管理员来源、群管理员能力和拒绝提示 |
+| 匹配 | `enable_regex_question`、`reject_empty_regex`、`reject_dangerous_regex`、`cooldown_seconds` | 控制正则、安全拦截和同群回复冷却 |
+| 媒体 | `enable_image_message`、`enable_video_message`、`persist_image_as_base64`、`enable_processing_feedback` | 控制图片、视频及保存反馈 |
+| 限额 | `max_question_length`、`max_answer_length`、`max_answers_per_question`、`max_*_questions_*` | 限制内容长度、随机候选和问答数量 |
+| 视频限额 | `max_videos_per_answer`、`max_video_size_mb`、`max_video_storage_mb`、`video_download_timeout_seconds` | 限制视频数量、大小、总量和处理时间 |
+| 展示与存储 | `list_page_size`、`storage_filename` | 控制列表显示数量和数据文件名 |
+
+`enable_global_question` 是预留配置，当前不会启用全群问答功能。
 
 ---
 
-## 当前状态
+## 当前限制
 
-当前版本为 `v0.1.2`，已实现：
-
-- 文本、图片和视频回答，其中图片支持文本 + 图片复合回答。
-- 回复 QQ 视频消息，或 `.mp4` / `.mov` / `.m4v` / `.webm` 文件，设置 video-only 回答。
-- 个人问答与本群公共问答两类作用域。
-- 完全匹配、正则匹配、捕获组回流和随机回答。
-- `XQA启用本群` / `XQA禁用本群` 群级总开关，以及本群个人问答开关。
-- AstrBot 管理员、插件 `admin_users`、QQ 群主/群管理员和普通成员的权限映射。
-- 媒体路径安全校验、单个视频大小限制和视频目录总量限制。
-- 27 项 unittest，覆盖群级启停、权限矩阵、媒体路径安全和视频存储限制。
-
-暂未实现：
-
-- 图片 / 视频作为问题。
-- 语音作为问题或回答。
-- 文字 + 视频同条回答。
-- `全群问A你答B`。
-- `看看全群问A`。
-- `全群不要回答A`。
-- `XQA清空本群所有我问` / `XQA清空本群所有有人问`，当前只返回暂未实现提示，不属于正式管理功能。
-- 跨群复制问答。
-- 数据导入导出。
-- WebUI / Pages 管理。
-
-详细产品规划见：
-
-```text
-PRD.md
-```
+- 仅处理群聊；不支持私聊问答。
+- 不支持图片或视频作为问题。
+- 不支持语音作为问题或回答。
+- 视频回答仅支持 video-only。
+- 不支持全群问答、跨群复制、批量清空、数据导入导出或 WebUI / Pages 管理。
+- 视频文件受单文件大小和视频目录总量限制；删除问答不会自动清理已保存的视频文件。
+- 正则使用安全规则进行保守拦截，但仍不建议在同一群同时启用多个自动问答 Bot。
 
 ---
 
-## 发布流程
+## 开发验证与发布
 
-仓库提供 GitHub Actions Release 流程：
-
-```text
-.github/workflows/release.yml
-```
-
-发布前需要先确认 `metadata.yaml` 中的 `version` 与 Release 版本一致。
-
-推荐发布方式：
+可运行最小开发验证：
 
 ```bash
-VERSION=v0.1.2
-git tag "$VERSION"
-git push origin "$VERSION"
+python -m unittest discover -s tests -v
 ```
 
-推送 `v*` tag 后，GitHub Actions 会自动：
+版本变化见 [`CHANGELOG.md`](CHANGELOG.md)；发布自动化见 [GitHub Actions](https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/blob/main/.github/workflows/release.yml)。
 
-1. 安装打包依赖。
-2. 校验 `metadata.yaml` 版本与 tag 一致。
-3. 运行打包脚本生成插件 zip。
-4. 上传构建产物。
-5. 创建 GitHub Release 并附加插件 zip。
+---
 
-也可以在 GitHub Actions 页面手动运行 `Release` workflow，并填写版本号。
+## 相关文档
+
+- [产品基线 PRD](PRD.md)
+- [MVP 功能行为规格 FSD](FSD.md)
+- [版本变化 CHANGELOG](CHANGELOG.md)
+- [配置权威定义](./_conf_schema.json)
 
 ---
 
 ## 许可证
 
-本仓库使用 GNU General Public License v3.0，详见 `LICENSE`。
-
-选择 GPL-3.0 是为了与参考项目 XQA 的许可证保持一致，并降低后续移植或改写参考实现时的许可风险。
+本仓库使用 GNU General Public License v3.0，详见 [`LICENSE`](LICENSE)。
 
 ---
 
 ## 致谢
 
-本项目的产品思路、自然语言问答交互与部分行为设计参考了：
+本项目是 AstrBot 插件实现，产品思路、自然语言问答交互与部分行为设计参考了：
 
-- `azmiao/YuiChyanBot`：<https://github.com/azmiao/YuiChyanBot>
+- [`azmiao/YuiChyanBot`](https://github.com/azmiao/YuiChyanBot)
 - XQA 模块及其 `我问A你答B`、`有人问A你答B` 交互设计
-- 插件 logo 使用来自参考项目的 `yuiChyan.jpg`，并以 AstrBot 常用的 `logo.png` 文件名随插件发布。
 
-感谢原项目作者 [AZMIAO](https://github.com/azmiao) 的工作。
-
-如果后续实现中直接移植或改写参考项目代码，将在 README 与源码注释中继续补充对应来源和许可说明。
+插件 logo 使用来自参考项目的 `yuiChyan.jpg`，并以 AstrBot 常用的 `logo.png` 文件名随插件发布。感谢原项目作者 [AZMIAO](https://github.com/azmiao) 的工作。
