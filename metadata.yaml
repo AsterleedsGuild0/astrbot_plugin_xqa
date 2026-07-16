@@ -2,7 +2,7 @@ name: astrbot_plugin_xqa
 display_name: XQA 问答
 short_desc: 群聊自定义问答插件，我问A你答B / 有人问A你答B
 desc: 支持“我问A你答B / 有人问A你答B”的 AstrBot 自然语言问答插件。
-version: v0.1.3
+version: v1.0.0
 author: AsterleedsGuild0
 repo: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa
 tags:

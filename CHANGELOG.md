@@ -6,11 +6,22 @@
 
 ## [Unreleased]
 
-### 变更
+## [v1.0.0] - 2026-07-16
+
+### 新增
 
 - 补充插件市场短描述、标签和 `aiocqhttp` 支持平台声明。
-- 出于安全考虑，新群 XQA 默认关闭，需要管理员发送 `XQA启用本群` 显式启用。
-- 群级启停改为必须明确 @ 当前 Bot，并补充禁用群静默、帮助恢复入口及多 Bot 隔离行为文档（[#3]）。
+
+### 变更
+
+- 出于安全考虑，新群 XQA 默认关闭，需要管理员显式启用。
+- 群级启停必须明确 @ 当前 Bot；禁用群中未 @ 当前 Bot 的消息保持静默，并提供帮助恢复入口和多 Bot 隔离行为（[#3]）。
+
+### 修复
+
+- 修复静默跳过消息时错误调用 `stop_event`、可能阻断后续消息处理的安全问题。
+- 修正 Changelog 引用链接过滤。
+- 补全 Release notes 引用链接。
 
 ## [v0.1.3] - 2026-07-16
 
@@ -69,7 +80,8 @@
 
 - 添加本地插件打包测试工具与仓库基础文件。
 
-[Unreleased]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v1.0.0...HEAD
+[v1.0.0]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.3...v1.0.0
 [v0.1.3]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.0...v0.1.1
