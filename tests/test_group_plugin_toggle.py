@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from astrbot_stubs import LOGGER
+from astrbot_stubs import At, LOGGER, Plain
 
 del LOGGER
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -16,6 +16,16 @@ main = importlib.import_module("astrbot_plugin_xqa.main")
 store_module = importlib.import_module("astrbot_plugin_xqa.core.store")
 XQAPlugin = main.XQAPlugin
 XQAStore = store_module.XQAStore
+
+
+def event_for(message: str, *, self_id: str = "bot-1", at: str | None = None):
+    event = Mock()
+    event.get_self_id.return_value = self_id
+    event.get_messages.return_value = [
+        *([At(at)] if at is not None else []),
+        Plain(message),
+    ]
+    return event
 
 
 class GroupPluginTogglePermissionTests(unittest.IsolatedAsyncioTestCase):
@@ -100,9 +110,12 @@ class DisabledGroupManagementTests(unittest.IsolatedAsyncioTestCase):
         for message in ("我问A你答B", "看看我问", "不要回答A"):
             with self.subTest(message=message):
                 result = await plugin._handle_management_message(
-                    Mock(), "group-1", "user-1", message
+                    event_for(message, at="bot-1"), "group-1", "user-1", message
                 )
-                self.assertEqual(result, "本群已禁用 XQA。发送“XQA启用本群”可恢复。")
+                self.assertEqual(
+                    result,
+                    "本群已禁用 XQA。请明确 @ 当前 Bot 后发送“XQA启用本群”恢复。",
+                )
 
     async def test_unimplemented_command_texts_are_silent(self):
         plugin = self.make_plugin()
@@ -122,7 +135,7 @@ class DisabledGroupManagementTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_enable_command_still_uses_toggle_logic(self):
         plugin = self.make_plugin()
-        event = Mock()
+        event = event_for("XQA启用本群", at="bot-1")
 
         result = await plugin._handle_management_message(
             event, "group-1", "user-1", "XQA启用本群"
@@ -187,7 +200,10 @@ class DefaultDisabledGroupTests(unittest.IsolatedAsyncioTestCase):
                 await plugin._match_reply("group-new", "admin-1", "hello")
             )
             result = await plugin._handle_management_message(
-                Mock(), "group-new", "admin-1", "XQA启用本群"
+                event_for("XQA启用本群", at="bot-1"),
+                "group-new",
+                "admin-1",
+                "XQA启用本群",
             )
 
             self.assertEqual(result, "本群已启用 XQA。")

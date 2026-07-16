@@ -52,6 +52,12 @@ class Reply(_Component):
         self.chain = chain
 
 
+class At(_Component):
+    def __init__(self, qq: str | int) -> None:
+        super().__init__(str(qq), kind="at")
+        self.qq = qq
+
+
 def install_astrbot_stubs() -> Mock:
     def decorator(*args, **kwargs):
         del args, kwargs
@@ -84,7 +90,7 @@ def install_astrbot_stubs() -> Mock:
     setattr(star, "StarTools", type("StarTools", (), {}))
 
     components = types.ModuleType("astrbot.api.message_components")
-    for component in (File, Image, Plain, Reply, Video):
+    for component in (At, File, Image, Plain, Reply, Video):
         setattr(components, component.__name__, component)
 
     sys.modules.update(

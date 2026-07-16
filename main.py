@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import inspect
+from typing import cast
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.event import MessageChain
+from astrbot.api.message_components import At
 from astrbot.api.star import Context, Star, StarTools
 
 from .core.message_codec import (
@@ -29,6 +31,9 @@ from .core.text import (
 )
 
 
+_SILENT_SKIP = object()
+
+
 class XQAPlugin(Star):
     """XQA-style natural language Q&A plugin for AstrBot."""
 
@@ -49,6 +54,12 @@ class XQAPlugin(Star):
 
     @filter.command("问答帮助", alias={"XQA帮助", "xqa帮助"})
     async def xqa_help(self, event: AstrMessageEvent):
+        group_id = str(event.get_group_id() or "")
+        if group_id and not self.store.is_group_enabled(
+            group_id, bool(self.config.get("group_plugin_enabled_default", False))
+        ):
+            if not self._is_at_current_bot(event):
+                return
         yield event.plain_result(self._help_text())
 
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
@@ -63,15 +74,15 @@ class XQAPlugin(Star):
             return
 
         reply = await self._handle_management_message(event, group_id, user_id, message)
+        if reply is _SILENT_SKIP:
+            return
         if reply is not None:
             event.stop_event()
-            if reply == "":
-                return
             if isinstance(reply, str):
                 yield event.plain_result(reply)
             else:
                 yield event.chain_result(
-                    build_components(reply, data_dir=self.data_dir)
+                    build_components(cast(AnswerChain, reply), data_dir=self.data_dir)
                 )
             return
 
@@ -82,9 +93,11 @@ class XQAPlugin(Star):
 
     async def _handle_management_message(
         self, event: AstrMessageEvent, group_id: str, user_id: str, message: str
-    ) -> str | AnswerChain | None:
+    ) -> str | AnswerChain | object | None:
         # 处理本群 XQA 总开关
         if message in {"XQA禁用本群", "XQA启用本群"}:
+            if not self._is_at_current_bot(event):
+                return _SILENT_SKIP
             return await self._toggle_group_plugin(
                 event, group_id, message.endswith("启用本群")
             )
@@ -93,8 +106,10 @@ class XQAPlugin(Star):
             self.config.get("group_plugin_enabled_default", False)
         )
         if not self.store.is_group_enabled(group_id, group_plugin_default):
+            if not self._is_at_current_bot(event):
+                return None
             if self._is_xqa_command_like(message):
-                return "本群已禁用 XQA。发送“XQA启用本群”可恢复。"
+                return "本群已禁用 XQA。请明确 @ 当前 Bot 后发送“XQA启用本群”恢复。"
             return None
 
         if message in {"XQA禁用我问", "XQA启用我问"}:
@@ -309,6 +324,28 @@ class XQAPlugin(Star):
             return True
         before_answer, delimiter, _ = message.partition("你答")
         return bool(delimiter and SET_QUESTION_PATTERN.match(before_answer))
+
+    @staticmethod
+    def _is_at_current_bot(event: AstrMessageEvent) -> bool:
+        try:
+            self_id = event.get_self_id()
+        except Exception:
+            return False
+        if self_id is None or not str(self_id).strip():
+            return False
+        try:
+            messages = event.get_messages() or []
+        except Exception:
+            return False
+        try:
+            components = iter(messages)
+        except TypeError:
+            return False
+        expected = str(self_id)
+        return any(
+            isinstance(component, At) and str(getattr(component, "qq", "")) == expected
+            for component in components
+        )
 
     async def _can_toggle_group_plugin(self, event: AstrMessageEvent) -> bool:
         if await self._is_plugin_admin(event):
@@ -576,8 +613,8 @@ class XQAPlugin(Star):
 - 不要回答A：删除自己的问答；管理员可删除公共问答
 
 管理：
-- XQA禁用本群：管理员禁用本群全部 XQA 功能
-- XQA启用本群：管理员启用本群全部 XQA 功能
+- @Bot XQA禁用本群：管理员禁用本群全部 XQA 功能，必须真实 At 当前 Bot
+- @Bot XQA启用本群：管理员启用本群全部 XQA 功能，必须真实 At 当前 Bot
 - XQA禁用我问：禁用本群个人问答
 - XQA启用我问：启用本群个人问答
 

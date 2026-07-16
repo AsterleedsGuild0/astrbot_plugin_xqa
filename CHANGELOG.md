@@ -10,6 +10,7 @@
 
 - 补充插件市场短描述、标签和 `aiocqhttp` 支持平台声明。
 - 出于安全考虑，新群 XQA 默认关闭，需要管理员发送 `XQA启用本群` 显式启用。
+- 群级启停改为必须明确 @ 当前 Bot，并补充禁用群静默、帮助恢复入口及多 Bot 隔离行为文档（[#3]）。
 
 ## [v0.1.3] - 2026-07-16
 
@@ -75,3 +76,4 @@
 [v0.1.0]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/releases/tag/v0.1.0
 [#1]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/1
 [#2]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/2
+[#3]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/issues/3
