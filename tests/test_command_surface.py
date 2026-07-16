@@ -106,10 +106,19 @@ class ManagementSurfaceTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ConfigurationSurfaceTests(unittest.TestCase):
-    def test_global_question_switch_is_not_public(self):
+    def read_schema(self):
         schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        return json.loads(schema_path.read_text(encoding="utf-8"))
+
+    def test_global_question_switch_is_not_public(self):
+        schema = self.read_schema()
         self.assertNotIn("enable_global_question", schema)
+
+    def test_group_plugin_defaults_disabled_but_self_questions_default_enabled(self):
+        schema = self.read_schema()
+        self.assertFalse(schema["group_plugin_enabled_default"]["default"])
+        self.assertTrue(schema["self_question_enabled_default"]["default"])
+        self.assertIn("XQA启用本群", schema["group_plugin_enabled_default"]["hint"])
 
 
 if __name__ == "__main__":

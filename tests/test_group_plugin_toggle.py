@@ -132,6 +132,71 @@ class DisabledGroupManagementTests(unittest.IsolatedAsyncioTestCase):
         plugin._toggle_group_plugin.assert_awaited_once_with(event, "group-1", True)
 
 
+class DefaultDisabledGroupTests(unittest.IsolatedAsyncioTestCase):
+    def make_plugin(self):
+        plugin = object.__new__(XQAPlugin)
+        plugin.config = {
+            "self_question_enabled_default": True,
+            "enable_regex_question": True,
+            "cooldown_seconds": 0,
+            "allow_group_admin_toggle_group_plugin": True,
+            "permission_denied_notice": True,
+        }
+        plugin._cooldowns = {}
+        plugin.store = Mock()
+        plugin.store.is_group_enabled.return_value = False
+        return plugin
+
+    async def test_missing_default_keeps_regular_messages_silent(self):
+        plugin = self.make_plugin()
+
+        result = await plugin._handle_management_message(
+            Mock(), "group-new", "user-1", "普通消息"
+        )
+
+        self.assertIsNone(result)
+        plugin.store.is_group_enabled.assert_called_once_with("group-new", False)
+
+    async def test_missing_default_does_not_match_questions(self):
+        plugin = self.make_plugin()
+
+        result = await plugin._match_reply("group-new", "user-1", "hello")
+
+        self.assertIsNone(result)
+        plugin.store.is_group_enabled.assert_called_once_with("group-new", False)
+        plugin.store.match.assert_not_called()
+
+    async def test_admin_can_enable_group_and_restore_matching(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            plugin = object.__new__(XQAPlugin)
+            plugin.config = {
+                "self_question_enabled_default": True,
+                "enable_regex_question": True,
+                "cooldown_seconds": 0,
+                "allow_group_admin_toggle_group_plugin": True,
+                "permission_denied_notice": True,
+            }
+            plugin._cooldowns = {}
+            plugin.store = XQAStore(temp_dir)
+            await plugin.store.load()
+            answer = [[{"type": "text", "text": "world"}]]
+            await plugin.store.set_question("group-new", "admin-1", "hello", answer)
+            plugin._is_plugin_admin = AsyncMock(return_value=True)
+
+            self.assertIsNone(
+                await plugin._match_reply("group-new", "admin-1", "hello")
+            )
+            result = await plugin._handle_management_message(
+                Mock(), "group-new", "admin-1", "XQA启用本群"
+            )
+
+            self.assertEqual(result, "本群已启用 XQA。")
+            self.assertEqual(
+                await plugin._match_reply("group-new", "admin-1", "hello"),
+                [{"type": "text", "text": "world"}],
+            )
+
+
 class GroupPluginMatchTests(unittest.IsolatedAsyncioTestCase):
     def make_plugin(self, *, enabled: bool):
         plugin = object.__new__(XQAPlugin)
@@ -169,6 +234,18 @@ class GroupPluginMatchTests(unittest.IsolatedAsyncioTestCase):
 
 
 class GroupPluginStorePersistenceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_explicit_group_state_overrides_false_default(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = XQAStore(temp_dir)
+            await store.load()
+
+            self.assertFalse(store.is_group_enabled("missing", False))
+            await store.set_group_enabled("enabled", True)
+            await store.set_group_enabled("disabled", False)
+
+            self.assertTrue(store.is_group_enabled("enabled", False))
+            self.assertFalse(store.is_group_enabled("disabled", True))
+
     async def test_group_toggle_survives_reload_without_losing_questions(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             store = XQAStore(temp_dir)

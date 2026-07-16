@@ -90,7 +90,7 @@ class XQAPlugin(Star):
             )
 
         group_plugin_default = bool(
-            self.config.get("group_plugin_enabled_default", True)
+            self.config.get("group_plugin_enabled_default", False)
         )
         if not self.store.is_group_enabled(group_id, group_plugin_default):
             if self._is_xqa_command_like(message):
@@ -328,7 +328,7 @@ class XQAPlugin(Star):
         self, group_id: str, user_id: str, message: str
     ) -> AnswerChain | None:
         if not self.store.is_group_enabled(
-            group_id, bool(self.config.get("group_plugin_enabled_default", True))
+            group_id, bool(self.config.get("group_plugin_enabled_default", False))
         ):
             return None
         if self._is_in_cooldown(group_id):

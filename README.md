@@ -21,6 +21,8 @@
 
 当前插件尚未发布到 AstrBot 插件市场。可将仓库放入 AstrBot 插件目录，或在 AstrBot WebUI 的插件管理页面上传插件 zip。运行数据会写入 AstrBot 插件数据目录，请勿将运行时数据提交到源码仓库。
 
+安装后，新群默认关闭 XQA。请先由管理员在群内发送 `XQA启用本群`，再设置或触发问答。
+
 ---
 
 ## 核心特性
@@ -120,13 +122,15 @@
 
 | 功能组 | 主要配置 | 用途 |
 | --- | --- | --- |
-| 群开关 | `group_plugin_enabled_default`、`self_question_enabled_default` | 控制新群的 XQA 与个人问答默认状态 |
+| 群开关 | `group_plugin_enabled_default`、`self_question_enabled_default` | 新群 XQA 默认关闭；启用本群后，个人问答默认开启 |
 | 权限 | `admin_users`、`allow_group_admin_*`、`permission_denied_notice` | 配置管理员来源、群管理员能力和拒绝提示 |
 | 匹配 | `enable_regex_question`、`reject_empty_regex`、`reject_dangerous_regex`、`cooldown_seconds` | 控制正则、安全拦截和同群回复冷却 |
 | 媒体 | `enable_image_message`、`enable_video_message`、`persist_image_as_base64`、`enable_processing_feedback` | 控制图片、视频及保存反馈 |
 | 限额 | `max_question_length`、`max_answer_length`、`max_answers_per_question`、`max_*_questions_*` | 限制内容长度、随机候选和问答数量 |
 | 视频限额 | `max_videos_per_answer`、`max_video_size_mb`、`max_video_storage_mb`、`video_download_timeout_seconds` | 限制视频数量、大小、总量和处理时间 |
 | 展示与存储 | `list_page_size`、`storage_filename` | 控制列表显示数量和数据文件名 |
+
+当前 `group_plugin_enabled_default=false`、`self_question_enabled_default=true`。已有显式群开关状态继续按保存的状态执行。
 
 ---
 

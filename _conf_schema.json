@@ -20,8 +20,8 @@
   "group_plugin_enabled_default": {
     "description": "新群默认启用 XQA 插件",
     "type": "bool",
-    "default": true,
-    "hint": "关闭后新群默认不处理任何 XQA 问答匹配和管理命令（除启用命令）。"
+    "default": false,
+    "hint": "安装后新群默认不处理 XQA 问答匹配和管理命令；需管理员发送“XQA启用本群”后启用。"
   },
   "allow_group_admin_toggle_group_plugin": {
     "description": "允许群管理员启停本群 XQA 插件",
