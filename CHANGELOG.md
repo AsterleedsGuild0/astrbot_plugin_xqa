@@ -6,13 +6,18 @@
 
 ## [Unreleased]
 
-### 文档
-
-- 新增面向维护者的 `DESIGN.md`，记录 v1.0.0 实现结构、数据与媒体边界、已知限制和测试索引，并纳入发布包；同步明确 At 只提供当前 Bot 的消息目标与路由隔离，不提供 Bot / platform 数据或状态隔离（[#5]）。
+## [v1.0.1] - 2026-07-16
 
 ### 修复
 
 - 修复禁用群帮助缺少明确恢复提示，以及无效媒体样式消息错误触发处理反馈的问题（[#4]）。
+
+### 文档
+
+- 新增面向维护者的 `DESIGN.md`，记录 v1.0.1 实现结构、数据与媒体边界、已知限制和测试索引，并纳入发布包；同步校正文档事实边界（[#5]）。
+
+### 测试
+
 - 修正个人问答默认开关的配置说明，并补充自定义存储文件名与无视频目录边界测试（[#6]）。
 
 ## [v1.0.0] - 2026-07-16
@@ -89,7 +94,8 @@
 
 - 添加本地插件打包测试工具与仓库基础文件。
 
-[Unreleased]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v1.0.1...HEAD
+[v1.0.1]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v1.0.0...v1.0.1
 [v1.0.0]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.3...v1.0.0
 [v0.1.3]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/AsterleedsGuild0/astrbot_plugin_xqa/compare/v0.1.1...v0.1.2
